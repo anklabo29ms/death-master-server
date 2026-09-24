@@ -274,15 +274,25 @@
     }
 
     function loadCaptcha() {
+      hideError();
       const btn = document.getElementById("btnProceed");
       btn.disabled = true;
       btn.innerText = "⏳ Đang tải Captcha...";
       document.getElementById("mathExpr").innerText = "Đang tải...";
 
       fetch("/api/getkey/captcha?t=" + Date.now())
-        .then(r => r.json())
-        .then(data => {
-          if (data.status === "ok") {
+        .then(async r => {
+          let data;
+          try {
+            data = await r.json();
+          } catch (e) {
+            showError("Lỗi phản hồi từ máy chủ Captcha! Vui lòng thử lại.");
+            btn.disabled = false;
+            btn.innerText = "🔄 Tải Lại Captcha";
+            return;
+          }
+          if (data && data.status === "ok") {
+            hideError();
             const expr = data.challenge || data.expr || "";
             document.getElementById("mathExpr").innerText = expr + " = ?";
             currentCid = data.cid || data.captcha_id || "";
@@ -301,16 +311,18 @@
             }
             if (data.min_duration) {
               minBypassSeconds = data.min_duration;
-              document.getElementById("minDurationText").innerText = minBypassSeconds + " giây";
+              const minEl = document.getElementById("minDurationText");
+              if (minEl) minEl.innerText = minBypassSeconds + " giây";
             }
           } else {
-            showError(data.message || "Lỗi tải Captcha! Vui lòng thử lại sau.");
+            showError((data && data.message) || "Lỗi tải Captcha! Vui lòng thử lại sau.");
             btn.disabled = false;
             btn.innerText = "🔄 Tải Lại Captcha";
           }
         })
-        .catch(() => {
-          showError("Lỗi tải Captcha! Vui lòng làm mới trang.");
+        .catch(err => {
+          console.error("loadCaptcha error:", err);
+          showError("Lỗi kết nối máy chủ Captcha! Vui lòng thử lại sau.");
           btn.disabled = false;
           btn.innerText = "🔄 Tải Lại Captcha";
         });

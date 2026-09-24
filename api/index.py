@@ -275,6 +275,52 @@ def verify_and_decode_getkey_token(token):
                 pass
     return None
 
+FAST_HARVEST_SOURCES = [
+    ("https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt", "http"),
+    ("https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks4.txt", "socks4"),
+    ("https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks5.txt", "socks5"),
+    ("https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt", "socks5"),
+    ("https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/all.txt", "http"),
+    ("https://raw.githubusercontent.com/roosterkid/openproxylist/main/HTTPS_RAW.txt", "http"),
+    ("https://raw.githubusercontent.com/roosterkid/openproxylist/main/SOCKS5_RAW.txt", "socks5"),
+    ("https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all", "http"),
+    ("https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks4&timeout=10000&country=all", "socks4"),
+    ("https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks5&timeout=10000&country=all", "socks5"),
+]
+
+def serverless_harvest_tasks(needed=400):
+    """Cào nhanh proxy trực tiếp cho Vercel Serverless khi kho task rỗng."""
+    if len(server.task_buffer) >= needed:
+        return
+    candidates = list(FAST_HARVEST_SOURCES)
+    random.shuffle(candidates)
+    added = 0
+    if not hasattr(server, "seen_proxies"):
+        server.seen_proxies = set()
+    
+    for url, proto in candidates:
+        if len(server.task_buffer) >= max(needed * 2, 1200):
+            break
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=3.0) as r:
+                text = r.read().decode("utf-8", errors="ignore")
+                matches = re.findall(r"(\b(?:\d{1,3}\.){3}\d{1,3}\b)[:\s\t]+(\d{2,5})\b", text)
+                for ip, port in matches:
+                    if 1 <= int(port) <= 65535:
+                        key = f"{ip}:{port}"
+                        if key not in server.seen_proxies:
+                            server.seen_proxies.add(key)
+                            server.task_buffer.append((key, proto))
+                            added += 1
+        except Exception:
+            continue
+    if hasattr(server.state, "total_scraped"):
+        server.state.total_scraped += added
+        server.state.queue_size = len(server.task_buffer)
+        server.state.sources_done = min(len(candidates), 10)
+        server.state.stage = f"Kho nhiệm vụ có {len(server.task_buffer):,} proxy. Đang phân phối cho Worker..."
+
 class handler(BaseHTTPRequestHandler):
     """Vercel Serverless Function Handler - Hỗ trợ toàn diện 100% Web Pages & REST APIs."""
 
@@ -451,6 +497,8 @@ class handler(BaseHTTPRequestHandler):
 
         # 2. Public REST APIs
         if path in ("/api/stats", "/stats"):
+            if server.state.total_scraped == 0 or len(server.task_buffer) < 200:
+                serverless_harvest_tasks(needed=400)
             data = server.state.get_dict()
             return self.send_json(data)
 
@@ -481,6 +529,10 @@ class handler(BaseHTTPRequestHandler):
                 }
             else:
                 server.state.active_workers[worker_id]["last_seen"] = now
+
+            # Tự động nạp kho proxy siêu tốc nếu kho đang cạn (Dành riêng cho Vercel Serverless)
+            if len(server.task_buffer) < count:
+                serverless_harvest_tasks(needed=count)
 
             tasks = []
             for _ in range(count):
