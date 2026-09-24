@@ -168,42 +168,6 @@
     }
     .btn-submit:hover { opacity: 0.92; transform: translateY(-1px); }
     .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
-    .test-box {
-      margin-top: 20px;
-      padding: 14px 16px;
-      background: rgba(245, 158, 11, 0.08);
-      border: 1px dashed rgba(245, 158, 11, 0.35);
-      border-radius: 12px;
-      text-align: left;
-    }
-    .test-title {
-      font-size: 12px;
-      font-weight: 800;
-      color: #f59e0b;
-      margin-bottom: 6px;
-      display: flex; align-items: center; gap: 6px;
-    }
-    .test-desc {
-      font-size: 11px;
-      color: #cbd5e1;
-      line-height: 1.5;
-      margin-bottom: 10px;
-    }
-    .btn-test {
-      padding: 8px 14px;
-      font-size: 11px;
-      font-weight: bold;
-      border-radius: 8px;
-      cursor: pointer;
-      border: 1px solid transparent;
-      text-decoration: none;
-      display: inline-flex; align-items: center; gap: 6px;
-      transition: all 0.2s;
-    }
-    .btn-test-normal { background: #161f33; color: #38bdf8; border-color: rgba(56, 189, 248, 0.3); }
-    .btn-test-normal:hover { background: #1e293b; }
-    .btn-test-bypass { background: rgba(244, 63, 94, 0.15); color: #f43f5e; border-color: rgba(244, 63, 94, 0.3); }
-    .btn-test-bypass:hover { background: rgba(244, 63, 94, 0.25); }
     .notice-card {
       margin-top: 18px;
       font-size: 11px;
@@ -225,25 +189,6 @@
       font-weight: bold;
       margin-bottom: 16px;
       text-align: center;
-    }
-    /* Simulation Modal */
-    #simModal {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(4, 6, 14, 0.92);
-      backdrop-filter: blur(16px);
-      z-index: 100;
-      align-items: center; justify-content: center;
-      padding: 20px;
-    }
-    .sim-card {
-      background: #0d1322;
-      border: 1px solid #06b6d4;
-      border-radius: 18px;
-      max-width: 480px; width: 100%;
-      padding: 28px;
-      text-align: center;
-      box-shadow: 0 0 35px rgba(6, 182, 212, 0.25);
     }
   </style>
 </head>
@@ -304,54 +249,9 @@
       </button>
     </div>
 
-    <!-- LOCALHOST TEST BENCH (DÀNH CHO CHỦ TOOL TEST NHANH) -->
-    <div class="test-box">
-      <div class="test-title">
-        <span>🧪</span> Chế Độ Thử Nghiệm Localhost (Dành Cho Bạn Test)
-      </div>
-      <div class="test-desc">
-        Hệ thống yêu cầu thời gian vượt link tối thiểu <b id="minDurationText" style="color:#10b981;">60 giây</b> (thực tế 2-3 phút) để chống tool bypass tự động. Bạn có thể test cả 2 trường hợp:
-      </div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button onclick="startSimulation(false)" class="btn-test btn-test-normal">
-          ⏱️ Test Giả Lập Vượt Hợp Lệ (Có đồng hồ đếm)
-        </button>
-        <button onclick="startSimulation(true)" class="btn-test btn-test-bypass">
-          🚨 Test Ngay Trường Hợp Bị Chặn Bypass
-        </button>
-      </div>
-    </div>
-
     <!-- NOTICE -->
     <div class="notice-card">
       💡 <b>Quy tắc bảo vệ thời gian:</b> Key Free 24h được sinh ra ở trạng thái <i>Chưa kích hoạt</i>. Đồng hồ 24 giờ <b>CHỈ BẮT ĐẦU ĐẾM</b> khi bạn nhập key vào Client để chạy scan lần đầu tiên!
-    </div>
-  </div>
-
-  <!-- SIMULATION MODAL -->
-  <div id="simModal">
-    <div class="sim-card">
-      <div style="font-size:42px; margin-bottom:12px;" id="simIcon">⏳</div>
-      <h3 style="font-size:18px; font-weight:800; color:#38bdf8; margin-bottom:8px;" id="simTitle">Đang Giả Lập Vượt Link</h3>
-      <p style="font-size:12px; color:#94a3b8; line-height:1.5; margin-bottom:18px;" id="simDesc">
-        Đồng hồ đang đếm thời gian từ lúc bạn giải captcha. Hãy xem cảm biến Anti-Bypass hoạt động!
-      </p>
-
-      <div style="font-size:40px; font-weight:900; font-family:monospace; color:#10b981; margin-bottom:20px;" id="simTimer">
-        00:00
-      </div>
-
-      <div style="display:flex; flex-direction:column; gap:10px;">
-        <button id="btnSimTriggerBypass" onclick="finishSimulation(true)" class="btn-test btn-test-bypass" style="width:100%; justify-content:center; padding:12px;">
-          🚨 Bấm Vượt Quá Nhanh (Kích Hoạt Chặn Anti-Bypass)
-        </button>
-        <button id="btnSimTriggerValid" onclick="finishSimulation(false)" class="btn-submit" style="margin:0; justify-content:center; display:none;">
-          ✅ Đã Đủ Thời Gian! Nhận Key 24h Ngay
-        </button>
-        <button onclick="closeSimModal()" class="btn-test" style="background:#161f33; color:#94a3b8; justify-content:center;">
-          ✕ Đóng / Hủy
-        </button>
-      </div>
     </div>
   </div>
 
@@ -444,61 +344,6 @@
         btn.disabled = false;
         btn.innerText = "🚀 Xác Minh & Bắt Đầu Vượt Link";
       });
-    }
-
-    // ================= LOCALHOST SIMULATION ENGINE =================
-    function startSimulation(forceBypassInstant) {
-      // Tự động kiểm tra captcha nếu chưa nhập
-      const ans = document.getElementById("captchaAnswer").value.trim();
-      if (!ans) {
-        showError("Vui lòng giải câu đố Captcha trước khi chạy thử nghiệm!");
-        document.getElementById("captchaAnswer").focus();
-        return;
-      }
-
-      submitCaptcha((data) => {
-        if (forceBypassInstant) {
-          // Vượt ngay lập tức dưới 2 giây -> Trigger Anti Bypass
-          window.location.href = `/getkey/verify?token=${currentToken}&test_bypass=1`;
-        } else {
-          openSimModal(false);
-        }
-      });
-    }
-
-    function openSimModal(instantBypass) {
-      document.getElementById("simModal").style.display = "flex";
-      simStartTime = Date.now();
-      const timerEl = document.getElementById("simTimer");
-      const btnTriggerValid = document.getElementById("btnSimTriggerValid");
-      btnTriggerValid.style.display = "none";
-
-      if (simTimerInterval) clearInterval(simTimerInterval);
-      simTimerInterval = setInterval(() => {
-        const elapsedSec = Math.floor((Date.now() - simStartTime) / 1000);
-        const m = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
-        const s = String(elapsedSec % 60).padStart(2, '0');
-        timerEl.innerText = `${m}:${s}`;
-
-        if (elapsedSec >= minBypassSeconds) {
-          btnTriggerValid.style.display = "flex";
-          btnTriggerValid.innerText = `✅ Đã Đủ ${elapsedSec}s! Nhận Key 24h Hợp Lệ`;
-        }
-      }, 500);
-    }
-
-    function closeSimModal() {
-      document.getElementById("simModal").style.display = "none";
-      if (simTimerInterval) clearInterval(simTimerInterval);
-    }
-
-    function finishSimulation(isFastBypass) {
-      closeSimModal();
-      if (isFastBypass) {
-        window.location.href = `/getkey/verify?token=${currentToken}&test_bypass=1`;
-      } else {
-        window.location.href = `/getkey/verify?token=${currentToken}`;
-      }
     }
 
     window.addEventListener("DOMContentLoaded", () => {
