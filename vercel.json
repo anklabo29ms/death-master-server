@@ -2,12 +2,7 @@
   "version": 2,
   "functions": {
     "api/index.py": {
-      "includeFiles": [
-        "*.html",
-        "sources.txt",
-        "keys.json",
-        "*.md"
-      ]
+      "includeFiles": "{*.html,*.txt,*.json,*.md}"
     }
   },
   "rewrites": [
