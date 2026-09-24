@@ -1,0 +1,22 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Environment
+.env
+.venv
+env/
+venv/
+
+# Output files
+goodproxies.txt
+elite_proxies.txt
+live_*.txt
+residential_proxies.txt
+bad_or_dead.txt
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,97 @@
+{
+  "admin": {
+    "username": "admin",
+    "password_hash": "bf60e45c5410ebb56506602e87aee2f8827ae00f58c9ceb76254cf52d5ed7168",
+    "salt": "DeathSecretSalt2026"
+  },
+  "secret_salt": "DeathSuperSecretHMACSalt998877",
+  "keys": {
+    "Death-99999999-AYIS2S5V-68E8D3F3": {
+      "key": "Death-99999999-AYIS2S5V-68E8D3F3",
+      "key_type": "paid_lifetime",
+      "created_at": "2026-09-23 20:19:00",
+      "created_timestamp": 1790169540.6107385,
+      "created_ip": "--",
+      "activated_at": null,
+      "expires_timestamp": null,
+      "expires_at": "Vĩnh viễn (Lifetime)",
+      "days": 0,
+      "status": "active",
+      "notes": "VIP Paid Lifetime",
+      "last_ip": "127.0.0.1",
+      "last_seen": "2026-09-23 22:20:45",
+      "total_submitted": 68,
+      "total_checked": 817171
+    },
+    "Death-00000000-V61WR15O-BE37A862": {
+      "key": "Death-00000000-V61WR15O-BE37A862",
+      "key_type": "free_24h",
+      "created_at": "2026-09-23 20:36:19",
+      "created_timestamp": 1790170579.7225652,
+      "created_ip": "127.0.0.1",
+      "activated_at": null,
+      "expires_timestamp": null,
+      "expires_at": "Chưa kích hoạt (24h sau khi kích hoạt)",
+      "days": 1,
+      "status": "unactivated",
+      "notes": "Link4M Auto (127.0.0.1)",
+      "last_ip": "127.0.0.1",
+      "last_seen": "--",
+      "total_submitted": 0,
+      "total_checked": 0
+    }
+  },
+  "whitelist": [],
+  "blacklist": {},
+  "shortened_links": {
+    "sIRNFS4": {
+      "code": "sIRNFS4",
+      "dest_url": "/getkey/middle?token=gCHgz4Fy7J4Izl7ZMJxbJnhFYKt6saVHikqiu6rNasc",
+      "created_at": 1790170053.7232196,
+      "created_date": "2026-09-23 20:27:33",
+      "duration": 90,
+      "clicks": 0
+    },
+    "TcUZcf4": {
+      "code": "TcUZcf4",
+      "dest_url": "/getkey/middle?token=YdD73Lf-kPWfxFO7rzQ1TDiqRAT4OrfMijlCAovzA2o",
+      "created_at": 1790170579.680021,
+      "created_date": "2026-09-23 20:36:19",
+      "duration": 90,
+      "clicks": 0
+    },
+    "lzht4hY": {
+      "code": "lzht4hY",
+      "dest_url": "/getkey/middle?token=ANQ6Ek6Kh7c8LRrf33yaBUM4y-PoxyKqGx4mYFupRRs",
+      "created_at": 1790171230.42265,
+      "created_date": "2026-09-23 20:47:10",
+      "duration": 90,
+      "clicks": 0
+    },
+    "lP0NZco": {
+      "code": "lP0NZco",
+      "dest_url": "/getkey/middle?token=HFvGa0e-RIo-OH80m3f3k9UNs6P4RjtEwAN5bvCaaes",
+      "created_at": 1790176285.774595,
+      "created_date": "2026-09-23 22:11:25",
+      "duration": 90,
+      "clicks": 0
+    }
+  },
+  "settings": {
+    "min_bypass_duration": 100,
+    "total_min_key_duration": 100,
+    "discord_check_duration": 90,
+    "required_discord_invite": "https://discord.gg/2zuwDpJaNP",
+    "required_discord_server_name": "Death Silence Community",
+    "link4m_url": "",
+    "discord_webhook": "https://discord.com/api/webhooks/123456789/fake-token",
+    "discord_notify_elite": true,
+    "discord_notify_residential": true,
+    "link4m_api_token": "",
+    "shortener_engine": "death",
+    "death_shortener_duration": 90,
+    "max_keys_per_ip_24h": true,
+    "enforce_ip_binding": true,
+    "enforce_pow": true
+  }
+}

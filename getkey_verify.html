@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚡ KẾT QUẢ XÁC MINH KEY — DEATH PROXY SCANNER</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #07090e;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      max-width: 620px;
+      width: 100%;
+      background: #0d1322;
+      border: 1px solid #1e293b;
+      border-radius: 20px;
+      padding: 36px 30px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7);
+      text-align: center;
+    }
+    .card-success {
+      border-color: rgba(16, 185, 129, 0.5);
+      box-shadow: 0 0 35px rgba(16, 185, 129, 0.15), 0 20px 45px rgba(0, 0, 0, 0.7);
+    }
+    .card-success::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 4px;
+      background: linear-gradient(90deg, #10b981, #06b6d4);
+      box-shadow: 0 0 15px #10b981;
+    }
+    .card-blocked {
+      border-color: rgba(239, 68, 68, 0.6);
+      box-shadow: 0 0 35px rgba(239, 68, 68, 0.2), 0 20px 45px rgba(0, 0, 0, 0.7);
+      background: radial-gradient(circle at 50% 0%, rgba(30, 10, 15, 0.95), rgba(13, 19, 34, 0.98));
+    }
+    .card-blocked::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 4px;
+      background: linear-gradient(90deg, #ef4444, #f43f5e);
+      box-shadow: 0 0 15px #ef4444;
+    }
+    .header-icon {
+      width: 70px; height: 70px;
+      margin: 0 auto 18px;
+      border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px;
+    }
+    .icon-success {
+      background: linear-gradient(135deg, #10b981, #06b6d4);
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+    }
+    .icon-blocked {
+      background: linear-gradient(135deg, #ef4444, #e11d48);
+      box-shadow: 0 0 25px rgba(239, 68, 68, 0.45);
+      animation: pulse-warn 1.5s infinite;
+    }
+    @keyframes pulse-warn {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    .title-success {
+      background: linear-gradient(to right, #10b981, #06b6d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .title-blocked {
+      color: #ef4444;
+      text-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    .key-display-box {
+      background: #07090e;
+      border: 1px solid rgba(6, 182, 212, 0.4);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+    }
+    .key-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 16px;
+      font-weight: 800;
+      color: #06b6d4;
+      letter-spacing: 1px;
+      word-break: break-all;
+      text-align: left;
+    }
+    .btn-copy {
+      background: #10b981;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-copy:hover { background: #059669; }
+    .badge-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      margin-bottom: 22px;
+      text-align: left;
+    }
+    .badge-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 10px 14px;
+    }
+    .badge-label {
+      font-size: 10px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .badge-val {
+      font-size: 13px;
+      font-weight: bold;
+      color: #fff;
+      margin-top: 3px;
+    }
+    .cmd-box {
+      background: #07090e;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 12px 14px;
+      text-align: left;
+      margin-bottom: 22px;
+    }
+    .cmd-text {
+      font-family: monospace;
+      font-size: 12px;
+      color: #f59e0b;
+      word-break: break-all;
+    }
+    .btn-action {
+      padding: 12px 22px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      border: 1px solid transparent;
+      text-decoration: none;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #10b981, #06b6d4);
+      color: #fff;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+    }
+    .btn-danger {
+      background: #ef4444;
+      color: #fff;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+    }
+    .btn-dark {
+      background: #161f33;
+      color: #cbd5e1;
+      border-color: #1e293b;
+    }
+    .btn-dark:hover { background: #1e293b; color: #fff; }
+    /* Loading Spinner */
+    .spinner {
+      width: 44px; height: 44px;
+      border: 3px solid rgba(6, 182, 212, 0.2);
+      border-top-color: #06b6d4;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 20px; right: 20px;
+      background: #10b981; color: #fff;
+      padding: 10px 18px; border-radius: 8px;
+      font-size: 12px; font-weight: bold;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      transform: translateY(100px); opacity: 0;
+      transition: all 0.25s; z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LOADING STATE -->
+  <div id="loadingBox" class="container">
+    <div class="spinner"></div>
+    <h2 style="font-size: 18px; font-weight: bold; color: #38bdf8;">Đang Xác Minh Token & Kiểm Tra Anti-Bypass...</h2>
+    <p style="font-size: 12px; color: #94a3b8; margin-top: 8px;">Vui lòng giữ nguyên màn hình trong giây lát.</p>
+  </div>
+
+  <!-- SUCCESS STATE -->
+  <div id="successBox" class="container card-success" style="display:none;">
+    <div class="header-icon icon-success">🎉</div>
+    <h1 class="title-success">XÁC MINH THÀNH CÔNG!</h1>
+    <p class="subtitle">
+      Chúc mừng bạn! Hệ thống đã ghi nhận lượt vượt link hợp lệ và cấp Khóa Bản Quyền <b>Free 24h</b>.
+    </p>
+
+    <!-- KEY DISPLAY -->
+    <div class="key-display-box">
+      <div id="keyDisplay" class="key-code">Death-00000000-XXXXXXXX-YYYYYYYY</div>
+      <button onclick="copyKey()" class="btn-copy">📋 Copy Key</button>
+    </div>
+
+    <!-- METRICS -->
+    <div class="badge-grid">
+      <div class="badge-card">
+        <div class="badge-label">Thời Hạn Sử Dụng</div>
+        <div class="badge-val text-green" style="color:#10b981;">24 Giờ</div>
+      </div>
+      <div class="badge-card">
+        <div class="badge-label">Trạng Thái Key</div>
+        <div class="badge-val" style="color:#f59e0b;">Chưa Kích Hoạt</div>
+      </div>
+      <div class="badge-card">
+        <div class="badge-label">Thời Gian Vượt Link</div>
+        <div id="elapsedText" class="badge-val" style="color:#38bdf8;">-- giây</div>
+      </div>
+    </div>
+
+    <!-- COMMAND BOX -->
+    <div class="cmd-box">
+      <div style="font-size:11px; color:#94a3b8; margin-bottom:6px; font-weight:bold;">⚡ LỆNH KHỞI CHẠY CLIENT (1 DÒNG DUY NHẤT):</div>
+      <div id="cmdText" class="cmd-text">python client.py -k <span id="cmdKey">...</span></div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+      <button onclick="copyCmd()" class="btn-action btn-primary">
+        📋 Copy Lệnh Chạy
+      </button>
+      <a href="/" class="btn-action btn-dark">
+        🌐 Mở Dashboard
+      </a>
+      <a href="/getkey" class="btn-action btn-dark">
+        🔄 Lấy Thêm Key
+      </a>
+    </div>
+
+    <div style="margin-top:20px; font-size:11px; color:#94a3b8; line-height:1.5;">
+      💡 <b>Quy tắc bảo lưu:</b> Đồng hồ 24 giờ <b>CHƯA BỊ TRỪ</b>! Thời gian chỉ bắt đầu tính khi bạn chạy Client scan lần đầu tiên trên máy tính!
+    </div>
+  </div>
+
+  <!-- BLOCKED (ANTI-BYPASS) STATE -->
+  <div id="blockedBox" class="container card-blocked" style="display:none;">
+    <div class="header-icon icon-blocked">🚨</div>
+    <h1 class="title-blocked">CẢNH BÁO BẢO MẬT (ANTI-BYPASS)</h1>
+    <p class="subtitle" style="color:#fca5a5;">
+      Phát hiện hành vi vượt link bất thường! Nghi vấn sử dụng Tool Bypass, Extension tự động hoặc can thiệp trái phép.
+    </p>
+
+    <div style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:12px; padding:18px; margin-bottom:22px; text-align:left;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:12px;">
+        <span style="color:#94a3b8;">Thời gian bạn hoàn thành:</span>
+        <b id="blockedElapsed" style="color:#ef4444; font-family:monospace; font-size:14px;">0s</b>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:12px;">
+        <span style="color:#94a3b8;">Thời gian tối thiểu quy định:</span>
+        <b id="blockedRequired" style="color:#10b981; font-family:monospace; font-size:14px;">60s</b>
+      </div>
+      <div style="border-top:1px solid rgba(239,68,68,0.2); padding-top:10px; font-size:11px; color:#fca5a5; line-height:1.5;">
+        ⚠️ <b>Lý do từ chối:</b> Tool bypass thường gửi request nhận đích trong vài giây, phá hủy giá trị quảng cáo và vi phạm quy định. Nhằm bảo đảm công bằng cho người dùng thực thụ, hệ thống đã <b>HỦY PHIÊN LÀM VIỆC NÀY</b>.
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; justify-content:center;">
+      <a href="/getkey" class="btn-action btn-danger">
+        🔄 Vượt Link Lại Thủ Công
+      </a>
+      <a href="/" class="btn-action btn-dark">
+        🌐 Về Trang Chủ
+      </a>
+    </div>
+  </div>
+
+  <div id="toast">Đã sao chép!</div>
+
+  <script>
+    let generatedKey = "";
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.innerText = msg;
+      t.style.transform = "translateY(0)";
+      t.style.opacity = "1";
+      setTimeout(() => {
+        t.style.transform = "translateY(100px)";
+        t.style.opacity = "0";
+      }, 2000);
+    }
+
+    function copyKey() {
+      if (!generatedKey) return;
+      navigator.clipboard.writeText(generatedKey).then(() => showToast("Đã copy key!"));
+    }
+
+    function copyCmd() {
+      if (!generatedKey) return;
+      navigator.clipboard.writeText(`python client.py -k ${generatedKey}`).then(() => showToast("Đã copy lệnh chạy!"));
+    }
+
+    // Browser Proof-of-Work: Tính toán hàm băm nhẹ chống bot/headless tool
+    async function solvePoW(token) {
+      if (!window.crypto || !window.crypto.subtle) return 0;
+      const enc = new TextEncoder();
+      let nonce = 0;
+      while (nonce < 60000) {
+        const buf = await crypto.subtle.digest("SHA-256", enc.encode(`${token}:pow:${nonce}`));
+        const arr = new Uint8Array(buf);
+        if (arr[0] === 0 && (arr[1] & 0xF0) === 0) {
+          return nonce;
+        }
+        nonce++;
+      }
+      return 0;
+    }
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      const params = new URLSearchParams(window.location.search);
+      let token = params.get("token") || "";
+      const testBypass = params.get("test_bypass") === "1";
+
+      // Nếu không có token trên URL (ví dụ vượt từ link rút gọn tĩnh của Link4M)
+      if (!token) {
+        try {
+          const sResp = await fetch("/api/getkey/my-session");
+          const sData = await sResp.json();
+          if (sData.status === "ok" && sData.token) {
+            token = sData.token;
+          }
+        } catch (e) {}
+      }
+
+      if (!token) {
+        document.getElementById("loadingBox").style.display = "none";
+        alert("Bạn chưa bắt đầu phiên lấy key! Vui lòng giải Captcha tại trang /getkey trước.");
+        window.location.href = "/getkey";
+        return;
+      }
+
+      // 1. Tính toán Proof-of-Work trình duyệt thật
+      let powNonce = 0;
+      try {
+        powNonce = await solvePoW(token);
+      } catch (e) {
+        powNonce = 0;
+      }
+
+      // 2. Gửi request xác minh kèm PoW
+      const verifyApiUrl = `/api/getkey/verify?token=${encodeURIComponent(token)}&pow_nonce=${powNonce}${testBypass ? '&test_bypass=1' : ''}`;
+
+      fetch(verifyApiUrl)
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById("loadingBox").style.display = "none";
+          if (data.status === "ok") {
+            generatedKey = data.key;
+            document.getElementById("keyDisplay").innerText = data.key;
+            document.getElementById("cmdKey").innerText = data.key;
+            document.getElementById("elapsedText").innerText = `${data.elapsed || 0} giây`;
+            if (data.is_existing) {
+              const subEl = document.querySelector("#successBox .subtitle");
+              if (subEl) subEl.innerHTML = `⚠️ <b>Khôi Phục Key Hiện Tại:</b> IP của bạn đã nhận 1 key trong vòng 24h qua. Dưới đây là Key còn hạn của bạn:`;
+            }
+            document.getElementById("successBox").style.display = "block";
+          } else if (data.status === "blocked") {
+            document.getElementById("blockedElapsed").innerText = `${data.elapsed || 0}s`;
+            document.getElementById("blockedRequired").innerText = `${data.min_duration || 60}s`;
+            if (data.strikes) {
+              const strikeNote = document.createElement("div");
+              strikeNote.style.marginTop = "10px";
+              strikeNote.style.color = "#f87171";
+              strikeNote.style.fontWeight = "bold";
+              strikeNote.innerText = `🚨 Cảnh cáo vi phạm bypass: Lần ${data.strikes}/3. (Nếu tiếp tục vi phạm 3 lần sẽ bị khóa IP 30 phút!)`;
+              document.querySelector("#blockedBox div[style*='background']").appendChild(strikeNote);
+            }
+            if (data.is_banned) {
+              alert("CẢNH BÁO: IP của bạn đã bị khóa tạm thời 30 phút vì cố tình vượt link bằng tool bypass!");
+            }
+            document.getElementById("blockedBox").style.display = "block";
+          } else if (data.status === "banned") {
+            document.getElementById("loadingBox").style.display = "none";
+            alert(data.message || "IP của bạn đang bị khóa tạm thời 30 phút!");
+            window.location.href = "/getkey";
+          } else {
+            alert(data.message || "Liên kết không hợp lệ hoặc đã hết hạn!");
+            window.location.href = "/getkey";
+          }
+        })
+        .catch(err => {
+          document.getElementById("loadingBox").style.display = "none";
+          alert("Lỗi kết nối máy chủ xác minh!");
+          window.location.href = "/getkey";
+        });
+    });
+  </script>
+</body>
+</html>

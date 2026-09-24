@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📜 TERMS OF SERVICE & AUP — DEATH PROXY SCANNER V1.0.0</title>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #07090e;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.6;
+    }
+
+    /* NAV HEADER */
+    .header-nav {
+      background: rgba(11, 15, 25, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid #1e293b;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: 12px 24px;
+    }
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: #fff;
+    }
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, #10b981, #06b6d4);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+    }
+    .brand-title {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .brand-sub {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-nav {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-nav-primary {
+      background: #10b981;
+      color: #fff;
+    }
+    .btn-nav-primary:hover {
+      background: #059669;
+    }
+    .btn-nav-dark {
+      background: #161f33;
+      color: #cbd5e1;
+      border: 1px solid #1e293b;
+    }
+    .btn-nav-dark:hover {
+      background: #1e293b;
+      color: #fff;
+    }
+    .btn-nav-discord {
+      background: #5865F2;
+      color: #fff;
+    }
+    .btn-nav-discord:hover {
+      opacity: 0.9;
+    }
+
+    /* MAIN CONTAINER */
+    .container {
+      max-width: 1000px;
+      margin: 32px auto 60px;
+      padding: 0 20px;
+      width: 100%;
+    }
+
+    /* HERO BANNER */
+    .hero-banner {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.05), rgba(15, 23, 42, 0.8));
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 18px;
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.08);
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-title {
+      font-size: 24px;
+      font-weight: 900;
+      color: #f8fafc;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .hero-sub {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.6;
+    }
+    .meta-badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: monospace;
+    }
+    .badge-green { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-cyan { background: rgba(6, 182, 212, 0.15); color: #06b6d4; border: 1px solid rgba(6, 182, 212, 0.3); }
+    .badge-purple { background: rgba(168, 85, 247, 0.15); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3); }
+
+    /* CARD SECTIONS */
+    .legal-card {
+      background: #0d1322;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 22px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+    .card-header-styled {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #1e293b;
+    }
+    .card-header-styled h2 {
+      font-size: 16px;
+      font-weight: 800;
+      color: #f1f5f9;
+      letter-spacing: -0.01em;
+    }
+
+    /* HOSTING CALLOUT */
+    .callout-box {
+      background: rgba(6, 182, 212, 0.08);
+      border-left: 4px solid #06b6d4;
+      border-radius: 0 10px 10px 0;
+      padding: 14px 18px;
+      margin-bottom: 18px;
+      font-size: 13px;
+      color: #cbd5e1;
+    }
+
+    /* FEATURE LIST */
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+      font-size: 13px;
+    }
+    .feature-item .icon {
+      font-size: 16px;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+    .feature-item strong {
+      color: #f8fafc;
+    }
+
+    /* 2-COLUMN POLICY GRID */
+    .policy-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin: 16px 0;
+    }
+    @media (max-width: 768px) {
+      .policy-grid { grid-template-columns: 1fr; }
+    }
+    .policy-col {
+      border-radius: 12px;
+      padding: 18px;
+    }
+    .policy-allowed {
+      background: rgba(16, 185, 129, 0.06);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+    .policy-prohibited {
+      background: rgba(244, 63, 94, 0.06);
+      border: 1px solid rgba(244, 63, 94, 0.25);
+    }
+    .policy-col h3 {
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .policy-allowed h3 { color: #10b981; }
+    .policy-prohibited h3 { color: #f43f5e; }
+    .policy-col ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 12.5px;
+      color: #cbd5e1;
+    }
+    .policy-col li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    /* FOOTER */
+    footer {
+      margin-top: auto;
+      border-top: 1px solid #1e293b;
+      background: rgba(11, 15, 25, 0.95);
+      padding: 20px;
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+    }
+    footer a {
+      color: #94a3b8;
+      text-decoration: none;
+      margin: 0 8px;
+    }
+    footer a:hover {
+      color: #10b981;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER NAVIGATION -->
+  <header class="header-nav">
+    <div class="header-inner">
+      <a href="/" class="brand-logo">
+        <div class="brand-icon">⚡</div>
+        <div>
+          <div class="brand-title">DEATH PROXY SCANNER V1.0.0</div>
+          <div class="brand-sub">Created By ! Death Silence</div>
+        </div>
+      </a>
+      <div class="nav-links">
+        <a href="/" class="btn-nav btn-nav-dark">🏠 Dashboard</a>
+        <a href="/hosting-aup" class="btn-nav btn-nav-dark">🛡️ Hosting AUP</a>
+        <a href="/getkey" class="btn-nav btn-nav-primary">🔑 Nhận Key 24h</a>
+        <a href="https://discord.gg/2zuwDpJaNP" target="_blank" class="btn-nav btn-nav-discord">
+          💬 Discord @qyk3
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN BODY -->
+  <main class="container">
+
+    <!-- HERO BANNER -->
+    <div class="hero-banner">
+      <h1 class="hero-title">
+        <span>📜</span> BỘ ĐIỀU KHOẢN DỊCH VỤ & CHÍNH SÁCH SỬ DỤNG (TOS / AUP)
+      </h1>
+      <p class="hero-sub">
+        Chính sách cam kết bảo vệ hạ tầng máy chủ, tuân thủ an toàn mạng và quy định sử dụng dịch vụ công bằng dành cho mọi người dùng và đơn vị cung cấp Hosting/VPS.
+      </p>
+      <div class="meta-badges">
+        <span class="badge badge-green">✔ TRẠNG THÁI: HIỆU LỰC CHÍNH THỨC</span>
+        <span class="badge badge-cyan">⚡ PHIÊN BẢN: V1.0.0</span>
+        <span class="badge badge-purple">💬 HỖ TRỢ: DISCORD @QYK3</span>
+      </div>
+    </div>
+
+    <!-- SECTION 1: DÀNH CHO HOSTING / DATA CENTERS -->
+    <div class="legal-card">
+      <div class="card-header-styled">
+        <span style="font-size:18px;">🌐</span>
+        <h2>1. THÔNG BÁO DÀNH CHO ĐƠN VỊ CUNG CẤP HOSTING / VPS / SYSADMIN</h2>
+      </div>
+
+      <div class="callout-box">
+        <strong>TO ALL HOSTING PROVIDERS, DATA CENTERS, AND SYSADMINS:</strong><br>
+        Phần mềm này là một <b>Distributed Network Latency Benchmark & Diagnostics Orchestrator</b> (Hệ thống điều phối đo độ trễ và kiểm tra định tuyến mạng phân tán phi tập trung) phục vụ nghiên cứu và kiểm thử hiệu năng mạng hợp pháp.
+      </div>
+
+      <div class="feature-item">
+        <span class="icon">🔒</span>
+        <div>
+          <strong>KHÔNG BAO GIỜ QUÉT CỔNG TỪ MÁY CHỦ (ZERO OUTBOUND PORT SCANNING):</strong><br>
+          Máy chủ Master (`server.py`) <b>hoàn toàn không thực hiện bất kỳ hành vi quét cổng (port scan), mass TCP SYN probe, ICMP sweep</b> nào ra bên ngoài mạng. Máy chủ chỉ hoạt động ở chế độ tiếp nhận (Inbound HTTP/WebSocket) tại cổng được cấp phép (mặc định: `5000`).
+        </div>
+      </div>
+
+      <div class="feature-item">
+        <span class="icon">🚀</span>
+        <div>
+          <strong>BĂNG THÔNG & TÀI NGUYÊN SIÊU NHẸ (MINIMAL RESOURCE PROFILE):</strong><br>
+          Tác vụ mạng gửi ra ngoài của máy chủ chỉ gói gọn trong việc tải các danh sách văn bản công khai định kỳ từ GitHub raw. Mức chiếm dụng RAM chỉ khoảng 50MB - 120MB, CPU dưới 3%, lưu lượng dưới 50 KB/s, hoàn toàn không gây nghẽn kết nối hay quá tải NAT của nhà cung cấp.
+        </div>
+      </div>
+
+      <div class="feature-item">
+        <span class="icon">👥</span>
+        <div>
+          <strong>PHÂN TẢI TOÀN BỘ VỀ CLIENT WORKER:</strong><br>
+          Toàn bộ công đoạn kiểm tra độ trễ (ping test) và xác thực proxy đều được thực hiện trên máy khách (`client.py`) của người dùng cá nhân, không tạo gánh nặng lưu lượng lên máy chủ host.
+        </div>
+      </div>
+
+      <div class="feature-item">
+        <span class="icon">☁️</span>
+        <div>
+          <strong>TƯƠNG THÍCH ĐÁM MÂY & VERCEL REVERSE PROXY:</strong><br>
+          Khi triển khai trên hạ tầng Vercel / Cloudflare / Serverless, hệ thống tự động bóc tách địa chỉ IP thực tế của máy khách qua các header chuẩn (<code>X-Vercel-Forwarded-For</code>, <code>X-Real-IP</code>, <code>CF-Connecting-IP</code>, <code>X-Forwarded-For</code>), tuyệt đối không gây nghẽn kết nối và tự động fallback về HTTP polling mượt mà.
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: ACCEPTABLE USE POLICY -->
+    <div class="legal-card">
+      <div class="card-header-styled">
+        <span style="font-size:18px;">🛡️</span>
+        <h2>2. CHÍNH SÁCH SỬ DỤNG CHẤP NHẬN ĐƯỢC (ACCEPTABLE USE POLICY)</h2>
+      </div>
+
+      <p style="font-size:13px; color:#94a3b8; margin-bottom:14px;">
+        Mọi người dùng khi kích hoạt Key và sử dụng công cụ đều phải cam kết tuân thủ nghiêm ngặt các quy định dưới đây:
+      </p>
+
+      <div class="policy-grid">
+        <!-- ALLOWED -->
+        <div class="policy-col policy-allowed">
+          <h3><span>✅</span> ĐƯỢC PHÉP & KHUYẾN KHÍCH</h3>
+          <ul>
+            <li>
+              <span>✔</span>
+              <span><b>Chẩn đoán mạng:</b> Đo kiểm độ trễ (latency ms) và khả năng kết nối tới các dịch vụ truyền thông công cộng (Discord, Cloudflare, CDN).</span>
+            </li>
+            <li>
+              <span>✔</span>
+              <span><b>Nghiên cứu & Học tập:</b> Thử nghiệm kiến trúc lập trình mạng bất đồng bộ Python (AsyncIO, aiohttp) và thuật toán tối ưu kết nối song song.</span>
+            </li>
+            <li>
+              <span>✔</span>
+              <span><b>Khắc phục bóp băng thông:</b> Hỗ trợ người dùng tại các mạng bị bóp lưu lượng quốc tế có thể kết nối ổn định tới các nền tảng mở.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- PROHIBITED -->
+        <div class="policy-col policy-prohibited">
+          <h3><span>🚫</span> NGHIÊM CẤM TUYỆT ĐỐI (ZERO TOLERANCE)</h3>
+          <ul>
+            <li>
+              <span>❌</span>
+              <span><b>Tấn công DDoS / DoS:</b> Tuyệt đối cấm sử dụng proxy để gửi lưu lượng rác làm tê liệt máy chủ khác.</span>
+            </li>
+            <li>
+              <span>❌</span>
+              <span><b>Dò quét mục tiêu cấm:</b> Nghiêm cấm đặt Target URL vào các cơ quan chính phủ (`.gov`, `.mil`), ngân hàng, hạ tầng thanh toán hoặc y tế.</span>
+            </li>
+            <li>
+              <span>❌</span>
+              <span><b>Chiếm đoạt tài khoản:</b> Cấm dùng proxy để bruteforce mật khẩu, spam hoặc credential stuffing.</span>
+            </li>
+            <li>
+              <span>❌</span>
+              <span><b>Quét mạng nội bộ:</b> Cấm kiểm tra các dải mạng riêng tư RFC 1918 (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.1`).</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3: LIMITATION OF LIABILITY -->
+    <div class="legal-card">
+      <div class="card-header-styled">
+        <span style="font-size:18px;">⚖️</span>
+        <h2>3. TUYÊN BỐ MIỄN TRỪ TRÁCH NHIỆM PHÁP LÝ (DISCLAIMER)</h2>
+      </div>
+
+      <div style="font-size:13px; color:#cbd5e1; display:flex; flex-direction:column; gap:12px; line-height:1.7;">
+        <p>
+          <b>1. Công nghệ Lưỡng dụng (Dual-Use Tool):</b> Tương tự như các tiện ích tiêu chuẩn (`curl`, `ping`, `nmap`), phần mềm này là công cụ kỹ thuật trung tính. Tác giả (`! Death Silence`) và đơn vị cung cấp hạ tầng máy chủ không chịu bất kỳ trách nhiệm pháp lý nào đối với hành vi sử dụng sai trái của người dùng cuối.
+        </p>
+        <p>
+          <b>2. Trách nhiệm người dùng:</b> Người dùng tự chịu trách nhiệm 100% trước pháp luật địa phương và quốc tế đối với mọi lưu lượng truy cập phát sinh từ máy tính cá nhân của mình.
+        </p>
+        <p>
+          <b>3. Quyền đình chỉ & Thu hồi:</b> Quản trị viên hệ thống có toàn quyền thu hồi giấy phép (`Key Bản Quyền`), khóa IP (`Blacklist IP`) đối với bất kỳ tài khoản hoặc IP nào có hành vi vi phạm điều khoản mà không cần thông báo trước.
+        </p>
+      </div>
+    </div>
+
+    <!-- SECTION 4: ABUSE CONTACT -->
+    <div class="legal-card" style="border-color: rgba(88, 101, 242, 0.4); background: linear-gradient(135deg, rgba(88, 101, 242, 0.08), rgba(13, 19, 34, 0.95));">
+      <div class="card-header-styled" style="border-color: rgba(88, 101, 242, 0.3);">
+        <span style="font-size:18px;">📬</span>
+        <h2 style="color:#5865F2;">4. BÁO CÁO LẠM DỤNG & HỖ TRỢ KỸ THUẬT (24/7 CONTACT)</h2>
+      </div>
+
+      <p style="font-size:13px; color:#cbd5e1; margin-bottom:14px; line-height:1.6;">
+        Nếu bất kỳ nhà mạng, quản trị viên hệ thống hoặc đơn vị cung cấp VPS nào phát hiện lưu lượng khả nghi cần hỗ trợ chặn IP, xin vui lòng liên hệ trực tiếp với chúng tôi để được giải quyết nhanh nhất trong vòng 24 giờ:
+      </p>
+
+      <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+        <a href="https://discord.gg/2zuwDpJaNP" target="_blank" class="btn-nav btn-nav-discord" style="padding:9px 18px; font-size:13px;">
+          💬 Tham Gia Server Discord Hỗ Trợ
+        </a>
+        <div style="font-size:13px; color:#94a3b8; font-family:monospace;">
+          Liên hệ Admin: <b>@qyk3</b> (Direct Message)
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center; margin-top:28px;">
+      <a href="/" class="btn-nav btn-nav-primary" style="padding:10px 24px; font-size:13px;">
+        🏠 Quay Trở Về Bảng Điều Khiển Dashboard
+      </a>
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    <div style="max-width:1000px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <div>
+        Death Proxy Scanner V1.0.0 • Created By <b>! Death Silence</b>
+      </div>
+      <div>
+        <a href="/">Dashboard</a> • 
+        <a href="/terms">Điều Khoản (TOS)</a> • 
+        <a href="/hosting-aup">Hosting AUP</a> • 
+        <a href="/getkey">Nhận Key 24h</a> • 
+        <a href="https://discord.gg/2zuwDpJaNP" target="_blank">Discord @qyk3</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

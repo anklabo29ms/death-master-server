@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚡ [LINK 3] DEATH-MIDDLE-GETKEY — ANTI-BYPASS 5 PHÚT & BẢO MẬT</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #07090e;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      max-width: 620px;
+      width: 100%;
+      background: #0d1322;
+      border: 1px solid rgba(6, 182, 212, 0.4);
+      border-radius: 20px;
+      box-shadow: 0 0 35px rgba(6, 182, 212, 0.15), 0 20px 40px rgba(0, 0, 0, 0.6);
+      padding: 32px 28px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .container::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 4px;
+      background: linear-gradient(90deg, #f59e0b, #06b6d4, #10b981);
+      box-shadow: 0 0 15px #06b6d4;
+    }
+    .header-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      background: rgba(6, 182, 212, 0.15);
+      color: #06b6d4;
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      margin-bottom: 12px;
+    }
+    .steps-bar {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      position: relative;
+    }
+    .step-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+      z-index: 2;
+    }
+    .step-item.active { color: #06b6d4; }
+    .step-item.passed { color: #10b981; }
+    .step-num {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: #161f33;
+      border: 1px solid #334155;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+    }
+    .step-item.active .step-num {
+      background: #06b6d4;
+      color: #07090e;
+      border-color: #06b6d4;
+      box-shadow: 0 0 12px rgba(6, 182, 212, 0.6);
+      font-weight: 800;
+    }
+    .step-item.passed .step-num {
+      background: #10b981;
+      color: #07090e;
+      border-color: #10b981;
+      font-weight: 800;
+    }
+
+    /* Timer Display */
+    .timer-card {
+      background: #07090e;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+    .timer-num {
+      font-size: 46px;
+      font-weight: 900;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      color: #06b6d4;
+      text-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
+      margin-bottom: 6px;
+    }
+    .timer-label {
+      font-size: 12px;
+      color: #94a3b8;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .progress-bar-bg {
+      width: 100%;
+      height: 6px;
+      background: #161f33;
+      border-radius: 3px;
+      margin-top: 14px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #f59e0b, #06b6d4, #10b981);
+      transition: width 1s linear;
+      box-shadow: 0 0 10px #06b6d4;
+    }
+
+    .info-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px dashed rgba(6, 182, 212, 0.3);
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 12px;
+      color: #cbd5e1;
+      text-align: left;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    /* Action Button */
+    .btn-action {
+      width: 100%;
+      padding: 16px;
+      border-radius: 12px;
+      background: #161f33;
+      color: #64748b;
+      font-size: 14px;
+      font-weight: 800;
+      border: 1px solid #334155;
+      cursor: not-allowed;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .btn-action.ready {
+      background: linear-gradient(135deg, #10b981, #06b6d4);
+      color: #fff;
+      border-color: transparent;
+      cursor: pointer;
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+    }
+    .btn-action.ready:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 35px rgba(6, 182, 212, 0.6);
+    }
+
+    /* Màn hình Đỏ Blocked */
+    .card-blocked {
+      border-color: rgba(239, 68, 68, 0.6) !important;
+      box-shadow: 0 0 40px rgba(239, 68, 68, 0.3) !important;
+    }
+    .btn-red {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: #fff;
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container" id="mainContainer">
+    <div class="header-badge">[LINK 3] DEATH-MIDDLE-GETKEY</div>
+    <h1 style="font-size: 22px; font-weight: 800; background: linear-gradient(to right, #06b6d4, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 6px;">
+      ANTI-BYPASS & SECURITY RADAR
+    </h1>
+    <p style="font-size: 12px; color: #94a3b8; margin-bottom: 20px;">
+      Đo tổng thời gian tiến trình (tối thiểu 5 phút) & giải thuật mật mã Proof-of-Work
+    </p>
+
+    <!-- 4 STEPS INDICATOR -->
+    <div class="steps-bar">
+      <div class="step-item passed">
+        <div class="step-num">✓</div>
+        <span>[1] Front</span>
+      </div>
+      <div class="step-item passed">
+        <div class="step-num">✓</div>
+        <span>[2] Discord</span>
+      </div>
+      <div class="step-item active">
+        <div class="step-num">3</div>
+        <span>[3] Middle</span>
+      </div>
+      <div class="step-item">
+        <div class="step-num">4</div>
+        <span>[4] End (Key)</span>
+      </div>
+    </div>
+
+    <!-- STATE 1: RUNNING / COUNTDOWN -->
+    <div id="countdownBox">
+      <div class="timer-card">
+        <div id="timerNum" class="timer-num">--</div>
+        <div id="timerText" class="timer-label">Đang đồng bộ tiến trình an toàn...</div>
+        <div class="progress-bar-bg">
+          <div id="progressFill" class="progress-bar-fill"></div>
+        </div>
+      </div>
+
+      <div class="info-box">
+        🛡️ <b>Quy định chống bypass:</b> Tổng thời gian từ [Link 1] đến khi nhận key phải kéo dài <b>ít nhất 5 phút (300 giây)</b> để đảm bảo công bằng cho người dùng và chặn 100% tool bypass tự động.
+        <div id="whitelistNotice" style="display:none; color:#10b981; margin-top:4px; font-weight:bold;">
+          ✨ IP của bạn đã được gắn cờ Whitelist: Được phép nhận key ngay lập tức!
+        </div>
+      </div>
+
+      <button id="btnRedeem" class="btn-action" disabled onclick="submitRedeem()">
+        <span id="btnRedeemText">⏳ Vui lòng chờ đủ thời gian 5 phút...</span>
+      </button>
+    </div>
+
+    <!-- STATE 2: BLOCKED ANTI-BYPASS -->
+    <div id="blockedBox" style="display: none;">
+      <div style="font-size:48px; margin-bottom:12px;">🚨</div>
+      <h2 style="font-size: 20px; font-weight: 800; color: #ef4444; margin-bottom: 8px;">
+        PHÁT HIỆN TOOL BYPASS GIAN LẬN!
+      </h2>
+      <p style="font-size: 12px; color: #fca5a5; margin-bottom: 20px; line-height: 1.5;">
+        Hành vi vượt link quá nhanh (< 5 phút) hoặc dùng script tự động đã bị bộ cảm biến <b>Death-Middle-GetKey</b> chặn đứng!
+      </p>
+
+      <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 16px; text-align: left; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px;">
+          <span style="color: #94a3b8;">Thời gian hoàn thành:</span>
+          <b id="blockedElapsed" style="color: #ef4444; font-family: monospace;">0s</b>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px;">
+          <span style="color: #94a3b8;">Thời gian tối thiểu quy định:</span>
+          <b id="blockedRequired" style="color: #10b981; font-family: monospace;">300s (5 phút)</b>
+        </div>
+        <div id="strikeNotice" style="border-top: 1px solid rgba(239, 68, 68, 0.2); padding-top: 10px; font-size: 11px; color: #f87171; font-weight: bold;">
+          🚨 Cảnh cáo vi phạm: Lần 1/3 (Nếu vi phạm 3 lần sẽ bị khóa IP 30 phút!)
+        </div>
+      </div>
+
+      <a href="/getkey" class="btn-action btn-red" style="text-decoration:none;">
+        🔄 Quay Về [Link 1] Death-Front-GetKey Làm Lại
+      </a>
+    </div>
+
+  </div>
+
+  <script>
+    let token = "";
+    let isWhitelisted = false;
+    let pollTimer = null;
+    let totalRequired = 300;
+
+    // Browser Proof-of-Work: Tính toán hàm băm SHA-256 chống bot
+    async function solvePoW(token) {
+      if (!window.crypto || !window.crypto.subtle) return 0;
+      const enc = new TextEncoder();
+      let nonce = 0;
+      while (nonce < 60000) {
+        const buf = await crypto.subtle.digest("SHA-256", enc.encode(`${token}:pow:${nonce}`));
+        const arr = new Uint8Array(buf);
+        if (arr[0] === 0 && (arr[1] & 0xF0) === 0) {
+          return nonce;
+        }
+        nonce++;
+      }
+      return 0;
+    }
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      const params = new URLSearchParams(window.location.search);
+      token = params.get("token") || "";
+
+      if (!token) {
+        try {
+          const sResp = await fetch("/api/getkey/my-session");
+          const sData = await sResp.json();
+          if (sData.status === "ok" && sData.token) token = sData.token;
+        } catch (e) {}
+      }
+
+      if (!token) {
+        alert("Phiên làm việc không tồn tại! Vui lòng bắt đầu từ [Link 1] Death-Front-GetKey.");
+        window.location.href = "/getkey";
+        return;
+      }
+
+      checkMiddleStatus();
+      pollTimer = setInterval(checkMiddleStatus, 1000);
+    });
+
+    function checkMiddleStatus() {
+      fetch(`/api/getkey/middle-status?token=${token}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.status === "ok") {
+            // Kiểm tra Discord check
+            if (!data.discord_verified && !data.is_whitelisted) {
+              clearInterval(pollTimer);
+              alert("Bạn chưa hoàn thành bước kiểm tra thành viên Discord tại [Link 2] Death-Shortener-GetKey!");
+              window.location.href = `/getkey/shortener?token=${token}`;
+              return;
+            }
+
+            isWhitelisted = data.is_whitelisted;
+            if (isWhitelisted) {
+              document.getElementById("whitelistNotice").style.display = "block";
+            }
+
+            totalRequired = data.total_min || 300;
+            const elapsed = data.total_elapsed || 0;
+            const remaining = data.remaining || 0;
+
+            const pct = Math.min(100, Math.round((elapsed / totalRequired) * 100));
+            document.getElementById("progressFill").style.width = pct + "%";
+
+            if (data.can_redeem || remaining <= 0) {
+              clearInterval(pollTimer);
+              readyToRedeem();
+            } else {
+              document.getElementById("timerNum").innerText = remaining + "s";
+              document.getElementById("timerText").innerText = `Tiến trình: ${elapsed}s / ${totalRequired}s (Còn ${remaining}s)`;
+              document.getElementById("btnRedeemText").innerText = `⏳ Đang đối soát bảo mật (Còn ${remaining}s)...`;
+            }
+          } else {
+            clearInterval(pollTimer);
+            alert(data.message || "Phiên không hợp lệ!");
+            window.location.href = "/getkey";
+          }
+        })
+        .catch(() => {});
+    }
+
+    function readyToRedeem() {
+      document.getElementById("timerNum").innerText = "✓";
+      document.getElementById("timerNum").style.color = "#10b981";
+      document.getElementById("timerText").innerText = "ĐỦ ĐIỀU KIỆN NHẬN KEY (>= 5 PHÚT)";
+      document.getElementById("progressFill").style.width = "100%";
+      document.getElementById("progressFill").style.background = "#10b981";
+
+      const btn = document.getElementById("btnRedeem");
+      btn.disabled = false;
+      btn.classList.add("ready");
+      btn.innerHTML = "<span>🚀 XÁC MINH & NHẬN KEY FREE 24H ➔</span>";
+    }
+
+    async function submitRedeem() {
+      const btn = document.getElementById("btnRedeem");
+      btn.disabled = true;
+      btn.innerHTML = "<span>⏳ Đang giải mật mã PoW & Nhận Key...</span>";
+
+      // 1. Tính toán Proof-of-Work
+      let powNonce = 0;
+      try {
+        powNonce = await solvePoW(token);
+      } catch (e) {
+        powNonce = 0;
+      }
+
+      // 2. Gửi request verify
+      const verifyApiUrl = `/api/getkey/verify?token=${encodeURIComponent(token)}&pow_nonce=${powNonce}`;
+
+      fetch(verifyApiUrl)
+        .then(r => r.json())
+        .then(data => {
+          if (data.status === "ok") {
+            // HỢP LỆ -> CHUYỂN TIẾP THẲNG SANG [LINK 4] (Death-End-GetKey)
+            const passUrl = `/getkey/end?key=${encodeURIComponent(data.key)}&elapsed=${data.elapsed || 0}${data.is_existing ? '&existing=1' : ''}`;
+            window.location.href = passUrl;
+          } else if (data.status === "blocked") {
+            // GIAN LẬN BYPASS -> HIỆN MÀN HÌNH ĐỎ
+            document.getElementById("mainContainer").classList.add("card-blocked");
+            document.getElementById("countdownBox").style.display = "none";
+            document.getElementById("blockedElapsed").innerText = `${data.elapsed || 0}s`;
+            document.getElementById("blockedRequired").innerText = `${data.min_duration || 300}s (5 phút)`;
+            if (data.strikes) {
+              document.getElementById("strikeNotice").innerText = `🚨 Cảnh cáo vi phạm bypass: Lần ${data.strikes}/3. (Nếu tiếp tục vi phạm 3 lần sẽ bị khóa IP 30 phút!)`;
+            }
+            if (data.is_banned) {
+              alert("CẢNH BÁO: IP của bạn đã bị khóa tạm thời 30 phút và đưa vào Blacklist vì cố tình vượt link bằng tool bypass!");
+            }
+            document.getElementById("blockedBox").style.display = "block";
+          } else if (data.status === "banned") {
+            alert(data.message || "IP của bạn đang bị khóa tạm thời 30 phút!");
+            window.location.href = "/getkey";
+          } else {
+            alert(data.message || "Lỗi xác minh phiên!");
+            btn.disabled = false;
+            btn.innerHTML = "<span>🚀 XÁC MINH & NHẬN KEY FREE 24H ➔</span>";
+          }
+        })
+        .catch(() => {
+          alert("Lỗi kết nối máy chủ xác minh!");
+          btn.disabled = false;
+          btn.innerHTML = "<span>🚀 XÁC MINH & NHẬN KEY FREE 24H ➔</span>";
+        });
+    }
+  </script>
+</body>
+</html>

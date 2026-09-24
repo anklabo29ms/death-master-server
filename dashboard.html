@@ -1,0 +1,2542 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚡ DEATH PROXY SCANNER V1.0.0 - MASTER SERVER</title>
+  
+  <!-- Fallback Embedded CSS: Đảm bảo giao diện 100% đẹp mắt ngay cả khi mất mạng hoặc CDN bị chặn -->
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #07090e;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .container { max-width: 1360px; margin: 0 auto; padding: 16px 20px; width: 100%; }
+    .grid-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+    .grid-charts { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+    .grid-main { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-top: 16px; }
+    @media (max-width: 1024px) {
+      .grid-charts, .grid-main { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: #0d1322;
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card-green { border-color: rgba(16, 185, 129, 0.4); box-shadow: 0 0 15px rgba(16, 185, 129, 0.12); }
+    .card-gold { border-color: rgba(245, 158, 11, 0.4); box-shadow: 0 0 15px rgba(245, 158, 11, 0.12); }
+    .card-cyan { border-color: rgba(6, 182, 212, 0.4); box-shadow: 0 0 15px rgba(6, 182, 212, 0.12); }
+    .stat-label { font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
+    .stat-num { font-size: 32px; font-weight: 800; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; margin: 4px 0; }
+    .text-green { color: #10b981; }
+    .text-gold { color: #f59e0b; }
+    .text-cyan { color: #06b6d4; }
+    .text-blue { color: #3b82f6; }
+    .text-purple { color: #a855f7; }
+    .text-rose { color: #f43f5e; }
+    .text-dim { color: #94a3b8; font-size: 12px; }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 6px;
+      font-family: monospace;
+    }
+    .btn {
+      padding: 7px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-green { background: #10b981; color: #fff; }
+    .btn-green:hover { background: #059669; }
+    .btn-cyan { background: rgba(6, 182, 212, 0.15); color: #06b6d4; border-color: rgba(6, 182, 212, 0.3); }
+    .btn-cyan:hover { background: rgba(6, 182, 212, 0.25); }
+    .btn-dark { background: #161f33; color: #cbd5e1; border-color: #27354f; }
+    .btn-dark:hover { background: #1e293b; color: #fff; }
+    .btn-grad { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; }
+    .btn-grad:hover { opacity: 0.9; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { padding: 10px 12px; text-align: left; color: #94a3b8; font-weight: 600; border-bottom: 1px solid #1e293b; background: #0b0f19; }
+    td { padding: 8px 12px; border-bottom: 1px solid #111827; font-family: ui-monospace, SFMono-Regular, monospace; }
+    tr:hover td { background: #111827; }
+    .scroll-box { overflow-y: auto; max-height: 520px; }
+    .scroll-box::-webkit-scrollbar { width: 6px; height: 6px; }
+    .scroll-box::-webkit-scrollbar-track { background: #07090e; }
+    .scroll-box::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    .pulse-dot {
+      width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+      animation: pulse-anim 1.5s infinite;
+    }
+    @keyframes pulse-anim {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+    .dropdown { position: relative; display: inline-block; }
+    .dropdown-menu {
+      display: none; position: absolute; right: 0; top: 100%; margin-top: 4px;
+      background: #0d1322; border: 1px solid #1e293b; border-radius: 12px;
+      min-width: 200px; box-shadow: 0 10px 25px rgba(0,0,0,0.6); z-index: 100;
+    }
+    .dropdown:hover .dropdown-menu { display: block; }
+    .dropdown-item {
+      display: flex; justify-content: space-between; padding: 8px 14px;
+      font-size: 12px; color: #cbd5e1; text-decoration: none;
+    }
+    .dropdown-item:hover { background: #161f33; color: #10b981; }
+
+    /* ================= CYBERPUNK ADMIN PANEL & GLASS SUITE ================= */
+    .admin-glass-bg {
+      background: radial-gradient(circle at 50% 0%, rgba(15, 23, 42, 0.98), rgba(4, 6, 14, 0.99));
+      backdrop-filter: blur(28px);
+    }
+    .admin-card {
+      background: rgba(13, 19, 33, 0.75);
+      border: 1px solid rgba(30, 41, 59, 0.85);
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      transition: all 0.25s ease;
+    }
+    .admin-card:hover {
+      border-color: rgba(6, 182, 212, 0.35);
+      box-shadow: 0 12px 35px rgba(6, 182, 212, 0.08), 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .admin-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(30, 41, 59, 0.85);
+      background: rgba(10, 15, 29, 0.7);
+    }
+    .admin-card-body {
+      padding: 18px 20px;
+    }
+    .admin-metric-box {
+      background: rgba(13, 19, 33, 0.85);
+      border: 1px solid rgba(30, 41, 59, 0.85);
+      border-radius: 14px;
+      padding: 16px 18px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .admin-metric-box:hover {
+      transform: translateY(-2px);
+    }
+    .admin-metric-box::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+    }
+    .admin-metric-cyan::before { background: linear-gradient(90deg, #06b6d4, #3b82f6); box-shadow: 0 0 12px #06b6d4; }
+    .admin-metric-green::before { background: linear-gradient(90deg, #10b981, #059669); box-shadow: 0 0 12px #10b981; }
+    .admin-metric-rose::before { background: linear-gradient(90deg, #f43f5e, #e11d48); box-shadow: 0 0 12px #f43f5e; }
+    .admin-metric-gold::before { background: linear-gradient(90deg, #f59e0b, #d97706); box-shadow: 0 0 12px #f59e0b; }
+    .admin-metric-purple::before { background: linear-gradient(90deg, #a855f7, #6366f1); box-shadow: 0 0 12px #a855f7; }
+
+    .admin-nav-tab {
+      padding: 9px 18px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 10px;
+      background: transparent;
+      color: #94a3b8;
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .admin-nav-tab:hover {
+      color: #f1f5f9;
+      background: rgba(30, 41, 59, 0.6);
+    }
+    .admin-nav-tab.active {
+      color: #06b6d4;
+      background: rgba(6, 182, 212, 0.12);
+      border-color: rgba(6, 182, 212, 0.35);
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.15);
+    }
+    .admin-input-styled {
+      background: #090e1a;
+      border: 1px solid #1e293b;
+      color: #f1f5f9;
+      border-radius: 10px;
+      padding: 9px 14px;
+      font-size: 12px;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .admin-input-styled:focus {
+      border-color: #06b6d4;
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.25);
+      background: #0d1527;
+    }
+  </style>
+
+  <!-- Suppress Tailwind CDN production warning -->
+  <script>
+    (function(){
+      const origWarn = console.warn;
+      console.warn = function(...args) {
+        if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) return;
+        origWarn.apply(console, args);
+      };
+    })();
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- FILE PROTOCOL WARNING (Nếu mở nhầm dạng file:///) -->
+  <div id="fileProtocolWarn" style="display:none; background: #b91c1c; color: #fff; padding: 10px 16px; text-align: center; font-size: 13px; font-weight: bold;">
+    ⚠️ CẢNH BÁO: Bạn đang mở tệp dưới dạng file://. Hãy truy cập đúng địa chỉ web: 
+    <a href="http://127.0.0.1:5000" style="color:#fef08a; text-decoration:underline; margin-left: 6px;">http://127.0.0.1:5000</a> để xem dữ liệu quét real-time!
+  </div>
+
+  <!-- TOP NAV -->
+  <header style="background: rgba(11, 15, 25, 0.95); border-bottom: 1px solid #1e293b; position: sticky; top: 0; z-index: 50; padding: 12px 20px;">
+    <div style="max-width: 1360px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div id="adminSecretLogo" onclick="handleSecretLogoClick()" title="⚡ Click 5 lần để mở Secret Admin Panel" style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #06b6d4, #10b981); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; color: #fff; box-shadow: 0 0 15px rgba(6, 182, 212, 0.4); cursor: pointer; user-select: none;">
+          ⚡
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h1 style="font-size: 18px; font-weight: 800; background: linear-gradient(to right, #10b981, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+              DEATH PROXY SCANNER
+            </h1>
+            <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">
+              V1.0.0 MASTER
+            </span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: #94a3b8; margin-top: 2px;">
+            <span id="wsDot" class="pulse-dot" style="background: #10b981;"></span>
+            <span id="wsStatus" style="color: #10b981; font-weight: 600;">Đang kết nối...</span>
+            <span>•</span>
+            <span id="sourcesCountHeader" style="color: #06b6d4;">1,258 Sources API</span>
+            <span>•</span>
+            <span id="activeClientsHeader" style="color: #f59e0b; font-weight: bold;">0 Clients Online</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTION BUTTONS -->
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <a href="https://discord.gg/2zuwDpJaNP" target="_blank" class="badge" style="background: rgba(88, 101, 242, 0.15); color: #5865F2; border: 1px solid rgba(88, 101, 242, 0.3); padding: 5px 10px; font-size: 12px; text-decoration: none;">
+          💬 Discord: @qyk3
+        </a>
+        <a href="/getkey" target="_blank" class="btn" style="background:linear-gradient(135deg, #f59e0b, #10b981); color:#fff; font-weight:800; box-shadow:0 0 15px rgba(245,158,11,0.25);">
+          🔑 Lấy Key Free 24h
+        </a>
+        <button id="btnToggle" onclick="toggleScanner()" class="btn btn-green">
+          <span id="btnToggleIcon">⏸️</span>
+          <span id="btnToggleText">Tạm Dừng</span>
+        </button>
+
+        <button onclick="rescanSources()" class="btn btn-dark">
+          🔄 Cào Nguồn Mới
+        </button>
+
+        <button onclick="copyAllLive()" class="btn btn-cyan">
+          📋 Copy All Live (<span id="copyLiveCount">0</span>)
+        </button>
+
+        <!-- DOWNLOAD MENU -->
+        <div class="dropdown">
+          <button class="btn btn-grad">
+            💾 Tải File .TXT ▾
+          </button>
+          <div class="dropdown-menu">
+            <a href="/download/goodproxies.txt" download class="dropdown-item">
+              <span>All Good Proxies</span>
+              <b class="text-green" id="dlGoodCount">0</b>
+            </a>
+            <a href="/download/residential_proxies.txt" download class="dropdown-item">
+              <span>🏡 Residential Dân Cư</span>
+              <b class="text-green" id="dlResidentialCount">0</b>
+            </a>
+            <a href="/download/elite_proxies.txt" download class="dropdown-item">
+              <span>⭐ Elite (&lt;650ms)</span>
+              <b class="text-gold" id="dlEliteCount">0</b>
+            </a>
+            <div style="height: 1px; background: #1e293b; margin: 4px 0;"></div>
+            <a href="/download/live_http.txt" download class="dropdown-item">
+              <span>HTTP / HTTPS</span>
+              <b class="text-cyan" id="dlHttpCount">0</b>
+            </a>
+            <a href="/download/live_socks4.txt" download class="dropdown-item">
+              <span>SOCKS4</span>
+              <b class="text-blue" id="dlSocks4Count">0</b>
+            </a>
+            <a href="/download/live_socks5.txt" download class="dropdown-item">
+              <span>SOCKS5</span>
+              <b class="text-purple" id="dlSocks5Count">0</b>
+            </a>
+            <div style="height: 1px; background: #1e293b; margin: 4px 0;"></div>
+            <a href="/download/live_detailed.txt" download class="dropdown-item">
+              <span>📋 Live Detailed (Full Info)</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- GIT AUTO-UPDATE BUTTON -->
+        <button id="btnGitUpdate" onclick="triggerGitUpdate()" class="btn btn-dark" style="border-color: #3b82f6; color: #60a5fa;" title="Kéo code mới từ Git và khởi động lại">
+          🚀 Cập Nhật Git
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN DASHBOARD CONTENT -->
+  <main class="container" style="flex: 1; display: flex; flex-direction: column; gap: 16px;">
+    
+    <!-- STATS CARDS -->
+    <section class="grid-cards">
+      <!-- Card 1: Live Proxies -->
+      <div class="card card-green">
+        <p class="stat-label text-green">Proxy Sống (Live)</p>
+        <div id="statLive" class="stat-num text-green">0</div>
+        <div class="text-dim">Tỷ lệ sống: <b id="statHitRate" style="color:#fff;">0.0%</b></div>
+      </div>
+
+      <!-- Card 2: Elite VIP -->
+      <div class="card card-gold">
+        <p class="stat-label text-gold">Elite VIP (&lt;650ms)</p>
+        <div id="statElite" class="stat-num text-gold">0</div>
+        <div class="text-dim">Siêu tốc (&lt;350ms): <b id="statUltra" style="color:#fff;">0</b></div>
+      </div>
+
+      <!-- Card 3: Speed -->
+      <div class="card card-cyan">
+        <p class="stat-label text-cyan">Tốc Độ Quét</p>
+        <div class="stat-num text-cyan"><span id="statSpeed">0</span> <span style="font-size:13px; color:#94a3b8;">req/s</span></div>
+        <div class="text-dim">Ping TB: <b id="statAvgPing" style="color:#fff;">-- ms</b></div>
+      </div>
+
+      <!-- Card 4: Total Checked -->
+      <div class="card">
+        <p class="stat-label text-dim">Đã Kiểm Tra</p>
+        <div id="statChecked" class="stat-num" style="color:#fff;">0</div>
+        <div class="text-dim">Chết / Lỗi: <b id="statDead" class="text-rose">0</b></div>
+      </div>
+
+      <!-- Card 5: Total Scraped -->
+      <div class="card">
+        <p class="stat-label text-dim">Tổng Cào Nguồn</p>
+        <div id="statScraped" class="stat-num text-purple">0</div>
+        <div class="text-dim">Hàng đợi: <b id="statQueue" class="text-cyan">0</b></div>
+      </div>
+
+      <!-- Card 6: Protocols -->
+      <div class="card">
+        <p class="stat-label text-dim">Giao Thức Sống</p>
+        <div style="font-size:12px; margin-top:8px; line-height:1.7; font-family:monospace;">
+          <div style="display:flex; justify-content:space-between;"><span class="text-cyan">HTTP:</span><b id="protoHttp">0</b></div>
+          <div style="display:flex; justify-content:space-between;"><span class="text-blue">SOCKS4:</span><b id="protoSocks4">0</b></div>
+          <div style="display:flex; justify-content:space-between;"><span class="text-purple">SOCKS5:</span><b id="protoSocks5">0</b></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHARTS ROW -->
+    <section class="grid-charts">
+      <div class="card" style="display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h2 style="font-size: 13px; font-weight: 700; color: #f1f5f9;">🌐 Top Quốc Gia Có Proxy Sống Nhiều Nhất</h2>
+          <span id="totalCountries" class="text-dim">0 quốc gia</span>
+        </div>
+        <div style="flex: 1; min-height: 180px; position: relative;">
+          <canvas id="countryChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card" style="display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h2 style="font-size: 13px; font-weight: 700; color: #f1f5f9;">⚡ Phân Bổ Độ Trễ (Latency)</h2>
+          <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981;">&lt;650ms Elite</span>
+        </div>
+        <div style="flex: 1; min-height: 180px; position: relative; display: flex; align-items: center; justify-content: center;">
+          <canvas id="latencyChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- MAIN TABLE & STREAM LOG -->
+    <section class="grid-main">
+      <!-- PROXY TABLE -->
+      <div class="card" style="display: flex; flex-direction: column;">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid #1e293b;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h2 style="font-size: 15px; font-weight: 800; color: #fff;">🎯 Bảng Proxy Sống Real-Time</h2>
+            <span id="tableCountBadge" class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">0 proxy</span>
+          </div>
+
+          <!-- FILTERS -->
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <select id="filterProto" onchange="applyFilters()" style="background: #161f33; border: 1px solid #27354f; color: #cbd5e1; border-radius: 8px; padding: 5px 8px; font-size: 11px;">
+              <option value="all">Tất cả Protocol</option>
+              <option value="http">HTTP/HTTPS</option>
+              <option value="socks4">SOCKS4</option>
+              <option value="socks5">SOCKS5</option>
+            </select>
+
+            <label style="display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: bold; color: #f59e0b; background: #161f33; padding: 5px 10px; border-radius: 8px; border: 1px solid #27354f; cursor: pointer;">
+              <input type="checkbox" id="filterEliteOnly" onchange="applyFilters()" style="cursor: pointer;">
+              Chỉ Elite VIP
+            </label>
+
+            <label style="display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: bold; color: #10b981; background: #161f33; padding: 5px 10px; border-radius: 8px; border: 1px solid #27354f; cursor: pointer;">
+              <input type="checkbox" id="filterResidentialOnly" onchange="applyFilters()" style="cursor: pointer;">
+              🏡 Dân Cư (Residential)
+            </label>
+
+            <input type="text" id="filterSearch" oninput="applyFilters()" placeholder="Tìm IP hoặc Quốc gia..." style="background: #161f33; border: 1px solid #27354f; color: #fff; border-radius: 8px; padding: 5px 10px; font-size: 11px; width: 140px;" />
+          </div>
+        </div>
+
+        <div class="scroll-box" style="flex: 1; margin-top: 10px;">
+          <table>
+            <thead>
+              <tr>
+                <th>GIAO THỨC</th>
+                <th>ĐỊA CHỈ PROXY</th>
+                <th>QUỐC GIA</th>
+                <th>PING (MS)</th>
+                <th>EXIT IP / COLO</th>
+                <th style="text-align: right;">THAO TÁC</th>
+              </tr>
+            </thead>
+            <tbody id="proxyTableBody">
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 36px 12px; color: #64748b;">
+                  ⏳ Đang cào nguồn và quét hàng chục nghìn proxy... Kết quả sống sẽ tự động hiển thị ngay tại đây!
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- STREAM LOG -->
+      <div class="card" style="display: flex; flex-direction: column; height: 560px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid #1e293b;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="pulse-dot" style="background: #10b981;"></span>
+            <h2 style="font-size: 13px; font-weight: 700; color: #f1f5f9;">Terminal Stream</h2>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
+            <label style="display: flex; align-items: center; gap: 4px; color: #94a3b8; cursor: pointer;">
+              <input type="checkbox" id="autoScrollLog" checked> Auto-scroll
+            </label>
+            <button onclick="clearConsoleLog()" class="btn btn-dark" style="padding: 3px 8px; font-size: 10px;">
+              Xóa log
+            </button>
+          </div>
+        </div>
+
+        <div id="webConsoleLog" class="scroll-box" style="flex: 1; background: #07090e; border: 1px solid #111827; border-radius: 10px; padding: 10px; margin-top: 10px; font-family: monospace; font-size: 11px;">
+          <div style="color: #64748b;">[SYSTEM] Khởi chạy máy chủ quét proxy V8 ALL-LIVE...</div>
+          <div style="color: #06b6d4;">[SYSTEM] Đang cào dữ liệu từ 438 nguồn API...</div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 10px; padding-top: 8px; border-top: 1px solid #1e293b; font-size: 11px; font-family: monospace;">
+          <span style="color: #94a3b8;">Trạng thái: <b id="scannerStage" class="text-green">Đang quét</b></span>
+          <span style="color: #94a3b8;">Chu kỳ: <b id="scannerCycle" class="text-cyan">#1</b></span>
+        </div>
+      </div>
+  </main>
+
+  <!-- FOOTER & LEGAL DISCLAIMER -->
+  <footer style="border-top: 1px solid #1e293b; background: rgba(11, 15, 25, 0.95); padding: 14px 20px; font-size: 11px; color: #64748b; margin-top: auto;">
+    <div style="max-width: 1360px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px;">
+      <div>
+        <b style="color:#f1f5f9;">DEATH PROXY SCANNER V1.0.0</b> • Created by <span style="color:#06b6d4; font-weight:bold;">! Death Silence</span> (Discord: <a href="https://discord.gg/2zuwDpJaNP" target="_blank" style="color:#f59e0b; font-weight:bold; text-decoration:none;">@qyk3</a>)
+      </div>
+      <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+        <span style="color: #475569;">Dual-Use Network Benchmark & Diagnostics Hub</span>
+        <span>•</span>
+        <a href="/terms" target="_blank" style="color: #94a3b8; text-decoration: underline;">📜 Terms of Service & AUP</a>
+        <span>•</span>
+        <a href="/hosting-aup" target="_blank" style="color: #94a3b8; text-decoration: underline;">🛡️ Hosting Compliance Statement</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- MODAL ĐĂNG NHẬP ADMIN (BÍ MẬT) -->
+  <div id="adminLoginModal" style="display:none; position:fixed; inset:0; background:rgba(4,6,12,0.88); backdrop-filter:blur(16px); z-index:1000; align-items:center; justify-content:center; padding:16px;">
+    <div style="background:rgba(13,19,33,0.95); border:1px solid rgba(6,182,212,0.35); border-radius:20px; padding:28px; max-width:400px; width:100%; box-shadow:0 0 40px rgba(6,182,212,0.2), 0 25px 50px rgba(0,0,0,0.85); position:relative;">
+      <button onclick="closeAdminLogin()" style="position:absolute; top:16px; right:18px; background:none; border:none; color:#64748b; font-size:18px; cursor:pointer; transition:color 0.2s;" onmouseover="this.style.color='#f43f5e'" onmouseout="this.style.color='#64748b'">✕</button>
+      
+      <div style="text-align:center; margin-bottom:20px;">
+        <div style="width:52px; height:52px; margin:0 auto 12px; border-radius:14px; background:linear-gradient(135deg, #06b6d4, #10b981); display:flex; align-items:center; justify-content:center; font-size:26px; box-shadow:0 0 20px rgba(6,182,212,0.4);">
+          🔐
+        </div>
+        <h3 style="font-size:18px; font-weight:800; background:linear-gradient(135deg, #f1f5f9, #06b6d4); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">
+          DEATH ADMIN AUTH
+        </h3>
+        <p style="font-size:11px; color:#94a3b8; margin-top:4px;">Cổng Quản Trị Hệ Thống Độc Quyền & Key Security</p>
+      </div>
+
+      <div id="loginAlertBox" style="display:none; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#fca5a5; padding:10px 14px; border-radius:10px; font-size:11px; margin-bottom:14px; text-align:center; font-weight:600;"></div>
+
+      <div style="margin-bottom:14px;">
+        <label style="display:block; font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.05em;">Tài Khoản Quản Trị</label>
+        <input type="text" id="adminUser" value="admin" class="admin-input-styled" style="width:100%;">
+      </div>
+
+      <div style="margin-bottom:22px;">
+        <label style="display:block; font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.05em;">Mật Khẩu</label>
+        <input type="password" id="adminPass" placeholder="••••••••••••" onkeydown="if(event.key==='Enter')submitAdminLogin()" class="admin-input-styled" style="width:100%;">
+      </div>
+
+      <button id="btnLoginAdmin" onclick="submitAdminLogin()" class="btn" style="width:100%; justify-content:center; padding:11px; font-size:13px; font-weight:800; background:linear-gradient(135deg, #06b6d4, #10b981); color:#fff; border-radius:10px; box-shadow:0 0 20px rgba(6,182,212,0.3); transition:all 0.2s;">
+        ⚡ Đăng Nhập Quản Trị Viên
+      </button>
+      <div style="text-align:center; margin-top:14px; font-size:11px; color:#64748b;">
+        Tự động khóa 15 phút nếu nhập sai quá 5 lần liên tiếp.
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL QUẢN LÝ MASTER ADMIN (EXECUTIVE CYBER SUITE) -->
+  <div id="adminPanelModal" class="admin-glass-bg" style="display:none; position:fixed; inset:0; z-index:1001; overflow-y:auto; padding:20px;">
+    <div style="max-width:1280px; margin:0 auto; display:flex; flex-direction:column; gap:18px;">
+      
+      <!-- Top Header Bar -->
+      <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(30,41,59,0.8); padding-bottom:16px; gap:12px;">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <div style="width:46px; height:46px; border-radius:12px; background:linear-gradient(135deg, #f59e0b, #ef4444); display:flex; align-items:center; justify-content:center; font-size:24px; box-shadow:0 0 20px rgba(245,158,11,0.35);">
+            👑
+          </div>
+          <div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <h2 style="font-size:20px; font-weight:800; background:linear-gradient(135deg, #fff, #38bdf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">
+                DEATH MASTER EXECUTIVE CONTROL CENTER
+              </h2>
+              <span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3);">
+                EXCLUSIVE ROOT
+              </span>
+            </div>
+            <p style="font-size:11px; color:#94a3b8; margin-top:3px;">
+              HMAC-SHA256 Encrypted • Minh Bạch Tuyệt Đối Từng Request • Đồng Bộ Real-Time
+            </p>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <button onclick="fetchAdminKeys(); fetchAdminWorkers();" class="btn btn-dark" style="border-color:rgba(6,182,212,0.4); color:#38bdf8;">
+            🔄 Làm Mới Telemetry
+          </button>
+          <button onclick="logoutAdmin()" class="btn" style="background:rgba(244,63,94,0.15); color:#f43f5e; border:1px solid rgba(244,63,94,0.3);">
+            🔒 Đăng Xuất
+          </button>
+          <button onclick="closeAdminPanel()" class="btn btn-cyan">
+            ✕ Đóng Panel
+          </button>
+        </div>
+      </div>
+
+      <!-- Segmented Tab Navigation -->
+      <div style="display:flex; gap:8px; border-bottom:1px solid rgba(30,41,59,0.7); padding-bottom:10px; overflow-x:auto;">
+        <button id="adminTabBtn_telemetry" onclick="switchAdminTab('telemetry')" class="admin-nav-tab active">
+          <span>📊</span> Telemetry & Worker Nodes
+        </button>
+        <button id="adminTabBtn_keys" onclick="switchAdminTab('keys')" class="admin-nav-tab">
+          <span>🔑</span> Quản Lý Key & Link4M
+        </button>
+        <button id="adminTabBtn_target" onclick="switchAdminTab('target')" class="admin-nav-tab">
+          <span>🎯</span> Target URL Dispatcher
+        </button>
+        <button id="adminTabBtn_settings" onclick="switchAdminTab('settings')" class="admin-nav-tab">
+          <span>🔔</span> Discord Webhook & Cài Đặt
+        </button>
+        <button id="adminTabBtn_security" onclick="switchAdminTab('security')" class="admin-nav-tab">
+          <span>🛡️</span> Quản Lý Whitelist & Blacklist
+        </button>
+      </div>
+
+      <!-- TAB 1: TELEMETRY & WORKER NODES -->
+      <div id="adminTabContent_telemetry" class="admin-tab-content">
+        <!-- 8 Transparent Exact Metric Cards -->
+        <div class="grid-cards" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 18px;">
+          <div class="admin-metric-box admin-metric-cyan">
+            <div class="stat-label text-cyan">ĐÃ DUYỆT CHÍNH XÁC</div>
+            <div id="adminExactChecked" class="stat-num text-cyan">0</div>
+            <div class="text-dim">Minh bạch từng request</div>
+          </div>
+          <div class="admin-metric-box admin-metric-green">
+            <div class="stat-label text-green">PROXY SỐNG CHÍNH XÁC</div>
+            <div id="adminExactLive" class="stat-num text-green">0</div>
+            <div class="text-dim">Vượt qua Ping Target</div>
+          </div>
+          <div class="admin-metric-box admin-metric-rose">
+            <div class="stat-label text-rose">PROXY CHẾT CHÍNH XÁC</div>
+            <div id="adminExactDead" class="stat-num text-rose">0</div>
+            <div class="text-dim">Không thể kết nối đích</div>
+          </div>
+          <div class="admin-metric-box admin-metric-gold">
+            <div class="stat-label text-gold">🏡 PROXY DÂN CƯ</div>
+            <div id="adminExactResidential" class="stat-num text-gold">0</div>
+            <div class="text-dim">Viettel, VNPT, FPT, Comcast...</div>
+          </div>
+          <div class="admin-metric-box admin-metric-purple">
+            <div class="stat-label text-purple">🏢 DATACENTER PROXY</div>
+            <div id="adminExactDatacenter" class="stat-num text-purple">0</div>
+            <div class="text-dim">OVH, AWS, Hetzner, DO...</div>
+          </div>
+          <div class="admin-metric-box admin-metric-cyan">
+            <div class="stat-label text-cyan">WORKER NODES ONLINE</div>
+            <div id="adminExactClients" class="stat-num text-cyan">0</div>
+            <div class="text-dim">Client đang kéo task</div>
+          </div>
+          <div class="admin-metric-box admin-metric-rose">
+            <div class="stat-label text-rose">🚨 CHẶN ANTI-BYPASS</div>
+            <div id="adminExactBypassBlocked" class="stat-num text-rose">0</div>
+            <div class="text-dim">Vượt link quá nhanh (< 60s)</div>
+          </div>
+          <div class="admin-metric-box admin-metric-green">
+            <div class="stat-label text-green">🎉 CẤP KEY FREE LINK4M</div>
+            <div id="adminExactGetkeySuccess" class="stat-num text-green">0</div>
+            <div class="text-dim">Vượt hợp lệ đủ thời gian</div>
+          </div>
+        </div>
+
+        <!-- Worker Nodes Telemetry Table Card -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="pulse-dot" style="background:#10b981;"></span>
+              <h3 style="font-size:14px; font-weight:800; color:#f1f5f9;">
+                Client Worker Nodes Telemetry (<span id="workerTotalCount" class="text-green">0</span>)
+              </h3>
+            </div>
+            <span class="badge" style="background:rgba(6,182,212,0.15); color:#06b6d4; border:1px solid rgba(6,182,212,0.3);">
+              Polling mỗi 2 giây
+            </span>
+          </div>
+          <div class="scroll-box" style="max-height:360px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>WORKER IP</th>
+                  <th>KEY BẢN QUYỀN</th>
+                  <th>TỐC ĐỘ</th>
+                  <th>ĐÃ DUYỆT</th>
+                  <th>PROXY SỐNG</th>
+                  <th>KẾT NỐI LÚC</th>
+                  <th style="text-align:right;">TRẠNG THÁI</th>
+                </tr>
+              </thead>
+              <tbody id="workersTableBody">
+                <tr><td colspan="7" style="text-align:center; padding:24px; color:#64748b;">Chưa có client worker nào đang kết nối.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: QUẢN LÝ BẢN QUYỀN KEY & LINK4M -->
+      <div id="adminTabContent_keys" class="admin-tab-content" style="display:none;">
+        <div style="display:flex; flex-direction:column; gap:18px;">
+
+          <!-- 1-CLICK QUICK ACTION SUITE -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px;">
+            <div class="admin-card" style="padding:18px; border-color:rgba(16,185,129,0.4); background:linear-gradient(135deg, rgba(16,185,129,0.08), rgba(13,19,33,0.9));">
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                <span style="font-size:24px;">⚡</span>
+                <div>
+                  <h4 style="font-size:15px; font-weight:800; color:#10b981;">Sinh Nhanh 10 Key Free 24h (Link4M)</h4>
+                  <p style="font-size:11px; color:#94a3b8;">Chưa kích hoạt • Đồng hồ 24h chỉ chạy khi client quét</p>
+                </div>
+              </div>
+              <button onclick="quickGenLink4MKeys()" class="btn btn-green" style="width:100%; justify-content:center; padding:10px; font-weight:800; margin-top:8px;">
+                ⚡ 1-Click Sinh 10 Key Free Link4M
+              </button>
+            </div>
+
+            <div class="admin-card" style="padding:18px; border-color:rgba(245,158,11,0.4); background:linear-gradient(135deg, rgba(245,158,11,0.08), rgba(13,19,33,0.9));">
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                <span style="font-size:24px;">💎</span>
+                <div>
+                  <h4 style="font-size:15px; font-weight:800; color:#f59e0b;">Sinh 1 Key Paid Vĩnh Viễn (Lifetime)</h4>
+                  <p style="font-size:11px; color:#94a3b8;">Khách hàng VIP • Không bao giờ hết hạn (99999999)</p>
+                </div>
+              </div>
+              <button onclick="quickGenLifetimeKey()" class="btn" style="width:100%; justify-content:center; padding:10px; font-weight:800; background:linear-gradient(135deg, #f59e0b, #d97706); color:#fff; margin-top:8px;">
+                💎 1-Click Sinh Key Paid Vĩnh Viễn
+              </button>
+            </div>
+          </div>
+
+          <!-- BATCH KEYS OUTPUT MODAL/BOX -->
+          <div id="batchKeysModal" class="admin-card" style="display:none; border-color:#06b6d4; background:rgba(6,182,212,0.06); padding:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <h4 style="font-size:14px; font-weight:bold; color:#38bdf8;" id="batchKeysTitle">Danh Sách Key Vừa Sinh:</h4>
+              <button onclick="document.getElementById('batchKeysModal').style.display='none'" class="btn btn-dark" style="padding:2px 8px; font-size:11px;">✕ Đóng</button>
+            </div>
+            <textarea id="batchKeysTextarea" rows="6" readonly class="admin-input-styled" style="width:100%; font-family:monospace; font-size:12px; line-height:1.5; color:#10b981; resize:none;"></textarea>
+            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+              <button onclick="copyBatchKeys()" class="btn btn-green">📋 Copy Toàn Bộ Key Để Đưa Lên Link4M</button>
+            </div>
+          </div>
+
+          <!-- Custom Generator Form Card -->
+          <div class="admin-card">
+            <div class="admin-card-header">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:16px;">⚙️</span>
+                <h3 style="font-size:14px; font-weight:800; color:#cbd5e1;">
+                  Bộ Tạo Khóa Tùy Chỉnh (Custom Generator)
+                </h3>
+              </div>
+              <span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3);">
+                Death-xxxxxxxx-yyyyyyyy-zzzzzzzz
+              </span>
+            </div>
+            <div class="admin-card-body">
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)) 160px; gap:14px; align-items:end;">
+                <div>
+                  <label style="display:block; font-size:11px; color:#94a3b8; margin-bottom:6px; font-weight:700; text-transform:uppercase;">Loại Khóa & Thời Hạn</label>
+                  <select id="genDays" class="admin-input-styled" style="width:100%;">
+                    <option value="1">⚡ Free 24h Link4M (24h sau kích hoạt)</option>
+                    <option value="7">7 Ngày (1 Tuần)</option>
+                    <option value="30" selected>30 Ngày (1 Tháng)</option>
+                    <option value="90">90 Ngày (3 Tháng)</option>
+                    <option value="365">365 Ngày (1 Năm)</option>
+                    <option value="0">⭐ Vĩnh Viễn (LifeTime)</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="display:block; font-size:11px; color:#94a3b8; margin-bottom:6px; font-weight:700; text-transform:uppercase;">Số Lượng Key</label>
+                  <input type="number" id="genCount" value="1" min="1" max="50" class="admin-input-styled" style="width:100%;">
+                </div>
+                <div>
+                  <label style="display:block; font-size:11px; color:#94a3b8; margin-bottom:6px; font-weight:700; text-transform:uppercase;">Ghi Chú / Tên Khách</label>
+                  <input type="text" id="genNotes" placeholder="VD: Khách Vip 01..." class="admin-input-styled" style="width:100%;">
+                </div>
+                <button onclick="submitGenKey()" class="btn btn-cyan" style="height:40px; justify-content:center; font-weight:800; border-radius:10px;">
+                  🔑 Sinh Key Tùy Chỉnh
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Keys Inventory Table Card -->
+          <div class="admin-card">
+            <div class="admin-card-header">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:16px;">📋</span>
+                <h3 style="font-size:14px; font-weight:800; color:#f1f5f9;">
+                  Danh Sách Key Trong Hệ Thống (<span id="keyTotalCount" class="text-cyan">0</span>)
+                </h3>
+              </div>
+              <input type="text" id="searchKeyInput" oninput="filterKeyTable()" placeholder="🔍 Lọc key hoặc ghi chú..." class="admin-input-styled" style="width:240px;">
+            </div>
+            <div class="scroll-box" style="max-height:480px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>KHÓA BẢN QUYỀN (KEY)</th>
+                    <th>LOẠI KEY</th>
+                    <th>HẠN DÙNG</th>
+                    <th>TRẠNG THÁI</th>
+                    <th>GHI CHÚ</th>
+                    <th>IP GẦN NHẤT</th>
+                    <th>ĐÃ NỘP LIVE</th>
+                    <th style="text-align:right;">THAO TÁC</th>
+                  </tr>
+                </thead>
+                <tbody id="keysTableBody">
+                  <tr><td colspan="8" style="text-align:center; padding:24px; color:#64748b;">Đang tải danh sách key...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: TARGET URL DISPATCHER -->
+      <div id="adminTabContent_target" class="admin-tab-content" style="display:none;">
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:16px;">🎯</span>
+              <h3 style="font-size:14px; font-weight:800; color:#06b6d4;">
+                Cấu Hình Mục Tiêu Ping Kiểm Tra Proxy (Target URL Dispatcher)
+              </h3>
+            </div>
+            <span class="badge" style="background:rgba(6,182,212,0.15); color:#06b6d4; border:1px solid rgba(6,182,212,0.3);">
+              Zero-Downtime Broadcast
+            </span>
+          </div>
+          <div class="admin-card-body" style="display:flex; flex-direction:column; gap:16px;">
+            <div style="background:rgba(6,182,212,0.08); border:1px solid rgba(6,182,212,0.2); border-radius:12px; padding:14px 18px; font-size:12px; line-height:1.6; color:#cbd5e1;">
+              💡 <b>Nguyên lý hoạt động:</b> Khi bạn thay đổi Target URL ở đây, toàn bộ các Worker Client đang kết nối sẽ nhận được cấu hình mới trong chu kỳ lấy task tiếp theo (&lt;1s) và lập tức chuyển sang ping kiểm tra đường link này. Proxy nào không phản hồi mã trạng thái &lt; 400 sẽ lập tức bị phân loại là <b>CHẾT</b>.
+            </div>
+
+            <div>
+              <label style="display:block; font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:6px; text-transform:uppercase;">Đường Dẫn Đích Cần Ping</label>
+              <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                <input type="text" id="adminTargetUrlInput" placeholder="http://1.1.1.1/cdn-cgi/trace" class="admin-input-styled" style="flex:1; min-width:300px; font-family:monospace; font-size:13px; color:#38bdf8;">
+                <button onclick="submitAdminTargetUrl()" class="btn btn-green" style="padding:10px 22px; font-weight:800; box-shadow:0 0 15px rgba(16,185,129,0.3);">
+                  💾 Lưu & Đồng Bộ Tức Thì Tới Toàn Bộ Worker Nodes
+                </button>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+              <span style="font-size:11px; color:#94a3b8; margin-right:4px;">Gợi ý đích phổ biến:</span>
+              <button onclick="document.getElementById('adminTargetUrlInput').value='http://1.1.1.1/cdn-cgi/trace'" class="btn btn-dark" style="padding:3px 10px; font-size:11px;">Cloudflare Trace</button>
+              <button onclick="document.getElementById('adminTargetUrlInput').value='https://discord.com/api/v9/gateway'" class="btn btn-dark" style="padding:3px 10px; font-size:11px;">Discord Gateway</button>
+              <button onclick="document.getElementById('adminTargetUrlInput').value='http://httpbin.org/ip'" class="btn btn-dark" style="padding:3px 10px; font-size:11px;">HttpBin IP</button>
+              <button onclick="document.getElementById('adminTargetUrlInput').value='https://api.ipify.org?format=json'" class="btn btn-dark" style="padding:3px 10px; font-size:11px;">Ipify API</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: DISCORD WEBHOOK & ANTI-BYPASS SETTINGS -->
+      <div id="adminTabContent_settings" class="admin-tab-content" style="display:none;">
+        <div style="display:flex; flex-direction:column; gap:18px;">
+          <!-- Discord Webhook Settings Card -->
+          <div class="admin-card">
+            <div class="admin-card-header">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:16px;">🔔</span>
+                <h3 style="font-size:14px; font-weight:800; color:#5865F2;">
+                  Cấu Hình Kênh Discord Webhook (Thông Báo Proxy Elite / Dân Cư)
+                </h3>
+              </div>
+              <span class="badge" style="background:rgba(88,101,242,0.15); color:#5865F2; border:1px solid rgba(88,101,242,0.3);">
+                🔒 Masked IP Guaranteed
+              </span>
+            </div>
+            <div class="admin-card-body" style="display:flex; flex-direction:column; gap:16px;">
+              <div style="background:rgba(88,101,242,0.08); border:1px solid rgba(88,101,242,0.2); border-radius:12px; padding:14px 18px; font-size:12px; line-height:1.6; color:#cbd5e1;">
+                🛡️ <b>Bảo vệ thợ săn:</b> Mọi thông báo gửi về Discord sẽ luôn được che 2 cụm số giữa của IP (ví dụ: <code style="color:#10b981; font-weight:bold;">103.152.***.***:1080</code>) nhằm chúc mừng thành quả mà không bao giờ làm lộ IP cho người khác tranh giành!
+              </div>
+
+              <div>
+                <label style="display:block; font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:6px; text-transform:uppercase;">Discord Webhook URL</label>
+                <input type="text" id="adminDiscordWebhook" placeholder="https://discord.com/api/webhooks/..." class="admin-input-styled" style="width:100%; font-family:monospace; font-size:12px; color:#5865F2;">
+              </div>
+
+              <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+                <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;">
+                  <input type="checkbox" id="adminDiscordNotifyElite" checked style="width:16px; height:16px; accent-color:#10b981;">
+                  Bật thông báo chúc mừng khi tìm thấy Proxy Elite (< 650ms)
+                </label>
+                <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;">
+                  <input type="checkbox" id="adminDiscordNotifyResidential" checked style="width:16px; height:16px; accent-color:#10b981;">
+                  Bật thông báo khi tìm thấy Proxy Dân Cư (Residential ISP)
+                </label>
+              </div>
+
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:4px;">
+                <button onclick="testDiscordWebhook()" class="btn" style="background:#5865F2; color:#fff; padding:9px 18px; font-weight:bold;">
+                  🧪 Test Webhook (Bắn Tin Nhắn Mẫu)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Anti-Bypass & Link4M Settings Card -->
+          <div class="admin-card">
+            <div class="admin-card-header">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:16px;">🛡️</span>
+                <h3 style="font-size:14px; font-weight:800; color:#f59e0b;">
+                  Cấu Hình Bảo Vệ Anti-Bypass & Link4M Get Key
+                </h3>
+              </div>
+              <span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3);">
+                Chống Tool Vượt Link
+              </span>
+            </div>
+            <div class="admin-card-body" style="display:flex; flex-direction:column; gap:16px;">
+              <!-- Hộp hiển thị BỘ 4 LIÊN KẾT GET KEY (DEATH SYSTEM) Cực Kỳ Rõ Ràng -->
+              <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.3); border-radius:14px; padding:18px;">
+                <div style="font-size:14px; font-weight:800; color:#10b981; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                  <span>💀</span> BỘ 4 LIÊN KẾT HỆ THỐNG GET KEY (DEATH SYSTEM KHÉP KÍN)
+                </div>
+
+                <!-- LINK 1 -->
+                <div style="background:#07090e; border:1px solid #1e293b; border-radius:10px; padding:12px; margin-bottom:10px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+                    <span style="font-size:12px; font-weight:bold; color:#06b6d4;">[Link 1] Death-Front-GetKey (Cổng Khách Vào Giải Captcha)</span>
+                    <button type="button" onclick="copySpecificLink('/getkey')" class="btn btn-dark" style="padding:4px 10px; font-size:11px;">📋 Copy Link 1</button>
+                  </div>
+                  <div id="linkDisplayFront" style="font-family:monospace; font-size:12px; color:#94a3b8;">http://127.0.0.1:5000/getkey</div>
+                </div>
+
+                <!-- LINK 2 -->
+                <div style="background:#07090e; border:1px solid rgba(88,101,242,0.4); border-radius:10px; padding:12px; margin-bottom:10px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+                    <span style="font-size:12px; font-weight:bold; color:#5865F2;">[Link 2] Death-Shortener-GetKey (XÁC THỰC DISCORD 1 - 2 PHÚT)</span>
+                    <button type="button" onclick="copySpecificLink('/getkey/shortener')" class="btn btn-dark" style="padding:4px 10px; font-size:11px;">📋 Copy Link 2</button>
+                  </div>
+                  <div id="linkDisplayShortener" style="font-family:monospace; font-size:12px; color:#5865F2;">http://127.0.0.1:5000/getkey/shortener</div>
+                </div>
+
+                <!-- LINK 3 -->
+                <div style="background:#07090e; border:1px solid rgba(245,158,11,0.5); border-radius:10px; padding:12px; margin-bottom:10px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+                    <span style="font-size:12px; font-weight:bold; color:#f59e0b;">⭐ [Link 3] Death-Middle-GetKey (ĐỐI SOÁT 5 PHÚT & GIẢI MÃ POW)</span>
+                    <button type="button" onclick="copySpecificLink('/getkey/middle')" class="btn btn-green" style="padding:4px 12px; font-size:11px; font-weight:bold;">📋 Copy Link 3</button>
+                  </div>
+                  <div id="linkDisplayMiddle" style="font-family:monospace; font-size:13px; color:#f59e0b; font-weight:bold;">http://127.0.0.1:5000/getkey/middle</div>
+                </div>
+
+                <!-- LINK 4 -->
+                <div style="background:#07090e; border:1px solid #1e293b; border-radius:10px; padding:12px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+                    <span style="font-size:12px; font-weight:bold; color:#10b981;">[Link 4] Death-End-GetKey (Cổng Gửi Key Cho Khách)</span>
+                    <button type="button" onclick="copySpecificLink('/getkey/end')" class="btn btn-dark" style="padding:4px 10px; font-size:11px;">📋 Copy Link 4</button>
+                  </div>
+                  <div id="linkDisplayEnd" style="font-family:monospace; font-size:12px; color:#94a3b8;">http://127.0.0.1:5000/getkey/end</div>
+                </div>
+              </div>
+
+              <!-- Cấu Hình Kiểm Tra Discord & Thời Gian Đốt (1-2p và 5p) -->
+              <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(88, 101, 242, 0.35); border-radius: 12px; padding: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+                  <div style="font-size:13px; font-weight:800; color:#5865F2; display:flex; align-items:center; gap:8px;">
+                    <span>💬</span> CẤU HÌNH XÁC THỰC MÁY CHỦ DISCORD & THỜI GIAN ĐỐT BOT
+                  </div>
+                  <span class="badge" style="background:rgba(88,101,242,0.15); color:#5865F2; border:1px solid rgba(88,101,242,0.3);">
+                    Tự Chủ Nội Bộ 100%
+                  </span>
+                </div>
+
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px; margin-bottom:12px;">
+                  <div>
+                    <label style="display:block; font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:6px; text-transform:uppercase;">
+                      Đường Link Mời Discord Bắt Buộc (Invite URL)
+                    </label>
+                    <input type="text" id="adminDiscordInvite" placeholder="https://discord.gg/2zuwDpJaNP" class="admin-input-styled" style="width:100%; font-family:monospace; font-size:12px; color:#5865F2;">
+                    <span style="font-size:11px; color:#64748b; margin-top:4px; display:block;">
+                      Khách hàng phải bấm tham gia link này tại Link 2.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label style="display:block; font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:6px; text-transform:uppercase;">
+                      Tên Máy Chủ Hiển Thị
+                    </label>
+                    <input type="text" id="adminDiscordServerName" placeholder="Death Silence Community" class="admin-input-styled" style="width:100%; font-size:12px; color:#38bdf8;">
+                  </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
+                  <div>
+                    <label style="display:block; font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:6px; text-transform:uppercase;">
+                      Thời Gian Kiểm Tra Discord Tại Link 2 (Giây)
+                    </label>
+                    <input type="number" id="adminDiscordCheckDuration" value="90" min="10" max="300" class="admin-input-styled" style="width:100%; font-family:monospace; font-size:13px; color:#5865F2;">
+                    <span style="font-size:11px; color:#64748b; margin-top:4px; display:block;">
+                      Thời gian đếm ngược đối soát thành viên (Mặc định: 90 giây = 1.5 phút).
+                    </span>
+                  </div>
+
+                  <div>
+                    <label style="display:block; font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:6px; text-transform:uppercase;">
+                      Tổng Thời Gian Đốt Tối Thiểu Toàn Bộ 4 Link (Giây)
+                    </label>
+                    <input type="number" id="adminTotalMinDuration" value="300" min="0" max="1800" class="admin-input-styled" style="width:100%; font-family:monospace; font-size:13px; color:#f59e0b;">
+                    <span style="font-size:11px; color:#64748b; margin-top:4px; display:block;">
+                      Tổng thời gian từ Link 1 đến Link 3 phải đủ <b>300 giây (5 phút)</b> mới cấp key.
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- DEATH URL SHORTENER HUB CARD -->
+              <div class="admin-card" style="border-color: rgba(6, 182, 212, 0.4); background: linear-gradient(135deg, rgba(6, 182, 212, 0.05), rgba(13, 19, 33, 0.95));">
+                <div class="admin-card-header">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:16px;">🔗</span>
+                    <h3 style="font-size:14px; font-weight:800; color:#06b6d4;">
+                      Bộ Tạo & Quản Lý Link Rút Gọn Tự Chủ (Death Shortener Engine)
+                    </h3>
+                  </div>
+                  <span class="badge" style="background:rgba(6,182,212,0.15); color:#06b6d4; border:1px solid rgba(6,182,212,0.3);">
+                    Thay Thế 100% Bitly / Link4M
+                  </span>
+                </div>
+                <div class="admin-card-body" style="display:flex; flex-direction:column; gap:14px;">
+                  <div style="font-size:12px; color:#cbd5e1; line-height:1.6; background:rgba(6,182,212,0.06); padding:10px 14px; border-radius:10px; border:1px solid rgba(6,182,212,0.2);">
+                    💡 <b>Tính năng tự chủ:</b> Bạn có thể rút gọn bất kỳ đường link nào (kênh Telegram, bài viết, link tải, hoặc trang web riêng). Khách truy cập vào link rút gọn sẽ trải qua màn hình đếm ngược an toàn kèm banner cộng đồng Discord trước khi được chuyển hướng tới link đích!
+                  </div>
+
+                  <!-- Form tạo link -->
+                  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)) 160px; gap:12px; align-items:end;">
+                    <div>
+                      <label style="display:block; font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:4px; text-transform:uppercase;">Đường Dẫn Đích (Destination URL)</label>
+                      <input type="text" id="shortDestUrl" placeholder="https://t.me/... hoặc https://..." class="admin-input-styled" style="width:100%; font-family:monospace; font-size:12px; color:#38bdf8;">
+                    </div>
+                    <div>
+                      <label style="display:block; font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:4px; text-transform:uppercase;">Bí Danh Tùy Chọn (Alias)</label>
+                      <input type="text" id="shortAlias" placeholder="VD: mygroup, vip..." class="admin-input-styled" style="width:100%; font-family:monospace; font-size:12px;">
+                    </div>
+                    <div>
+                      <label style="display:block; font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:4px; text-transform:uppercase;">Đếm Ngược (Giây)</label>
+                      <input type="number" id="shortDuration" value="15" min="3" max="300" class="admin-input-styled" style="width:100%; font-family:monospace; font-size:12px; color:#f59e0b;">
+                    </div>
+                    <button type="button" onclick="createAdminShortLink()" class="btn btn-cyan" style="height:38px; font-weight:800; font-size:12px; justify-content:center;">
+                      ⚡ Tạo Link Rút Gọn
+                    </button>
+                  </div>
+
+                  <!-- Table danh sách link đã rút gọn -->
+                  <div style="margin-top:6px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                      <span style="font-size:12px; font-weight:bold; color:#f1f5f9;">
+                        📋 Danh Sách Link Đang Hoạt Động (<span id="shortenerLinksCount" class="text-cyan">0</span>)
+                      </span>
+                      <button type="button" onclick="fetchAdminShortenerLinks()" class="btn btn-dark" style="padding:2px 8px; font-size:10px;">
+                        🔄 Làm Mới
+                      </button>
+                    </div>
+                    <div class="scroll-box" style="max-height:220px;">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>LINK RÚT GỌN</th>
+                            <th>ĐÍCH ĐẾN</th>
+                            <th>ĐẾM NGƯỢC</th>
+                            <th>LƯỢT CLICK</th>
+                            <th>NGÀY TẠO</th>
+                            <th style="text-align:right;">THAO TÁC</th>
+                          </tr>
+                        </thead>
+                        <tbody id="shortenerTableBody">
+                          <tr><td colspan="6" style="text-align:center; padding:16px; color:#64748b;">Đang tải danh sách link rút gọn...</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Extra Security Switches -->
+              <div style="background:rgba(15, 23, 42, 0.6); border:1px solid #1e293b; border-radius:12px; padding:12px 16px; display:flex; flex-direction:column; gap:10px;">
+                <div style="font-size:12px; font-weight:bold; color:#06b6d4; margin-bottom:2px;">
+                  🛡️ BẢO MẬT CHỐNG SPAM & CHỐNG BYPASS ĐA TẦNG:
+                </div>
+                <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;">
+                  <input type="checkbox" id="adminMaxKeysPerIp" checked style="accent-color:#10b981; cursor:pointer;">
+                  <span><b>Giới hạn 1 Key / IP / 24 Giờ (Anti-Hoarding)</b>: Ngăn ngừa bot cày gom hàng trăm key từ 1 IP.</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;">
+                  <input type="checkbox" id="adminEnforceIpBinding" checked style="accent-color:#10b981; cursor:pointer;">
+                  <span><b>Khóa Chặt Token Theo IP (IP Binding)</b>: Chỉ cho phép IP giải Captcha nhận key, chống copy link ném lên Discord.</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;">
+                  <input type="checkbox" id="adminEnforcePoW" checked style="accent-color:#10b981; cursor:pointer;">
+                  <span><b>Xác Thực Trình Duyệt Thật (Browser Proof-of-Work)</b>: Chặn đứng 100% curl / python / headless scraper.</span>
+                </label>
+              </div>
+
+              <div style="display:flex; justify-content:flex-end; margin-top:6px;">
+                <button onclick="saveSystemSettings()" class="btn btn-green" style="padding:10px 24px; font-weight:800;">
+                  💾 Lưu Toàn Bộ Cấu Hình Hệ Thống
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 5: QUẢN LÝ WHITELIST & BLACKLIST -->
+      <div id="adminTabContent_security" class="admin-tab-content" style="display:none;">
+        <div style="display:flex; flex-direction:column; gap:18px;">
+
+          <!-- Info banner -->
+          <div style="background:rgba(6,182,212,0.08); border:1px solid rgba(6,182,212,0.25); border-radius:12px; padding:14px 18px; font-size:12px; line-height:1.6; color:#cbd5e1; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+              🛡️ <b>Cơ chế An ninh & Tự khắc phục sự cố:</b> IP thuộc <b>Whitelist</b> sẽ được miễn trừ hoàn toàn yêu cầu chờ 5 phút và không bao giờ bị dính đòn trừng phạt Anti-Bypass. Khi gặp sự cố kiểm tra sai (false-positive) hoặc người dùng bị chặn nhầm, Admin có thể <b>Unban 1-Click</b> ngay lập tức bên dưới.
+            </div>
+            <button onclick="fetchAdminSecurityLists()" class="btn btn-dark" style="border-color:rgba(6,182,212,0.4); color:#38bdf8; font-size:11px; padding:6px 14px;">
+              🔄 Làm Mới Danh Sách
+            </button>
+          </div>
+
+          <!-- Grid: Whitelist & Add to Whitelist -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px;">
+            <!-- Whitelist Card -->
+            <div class="admin-card">
+              <div class="admin-card-header">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="font-size:16px;">🟢</span>
+                  <h3 style="font-size:14px; font-weight:800; color:#10b981;">
+                    Danh Sách Trắng (Whitelist IP) (<span id="whitelistTotalCount" class="text-green">0</span>)
+                  </h3>
+                </div>
+                <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3);">
+                  Miễn Chờ 5 Phút
+                </span>
+              </div>
+              <div class="admin-card-body" style="display:flex; flex-direction:column; gap:12px;">
+                <div style="display:flex; gap:8px;">
+                  <input type="text" id="addWhitelistInput" placeholder="Nhập IP (VD: 127.0.0.1, 14.161.x.x)..." class="admin-input-styled" style="flex:1; font-family:monospace; font-size:12px;">
+                  <button onclick="addManualWhitelist()" class="btn btn-green" style="padding:8px 16px; font-weight:bold; font-size:11px;">
+                    ➕ Thêm IP
+                  </button>
+                </div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; font-size:11px; color:#94a3b8;">
+                  <span>IP của bạn: <code id="adminCurrentIpDisplay" style="color:#06b6d4; font-weight:bold;">--</code></span>
+                  <button onclick="addCurrentIpToWhitelist()" class="btn btn-dark" style="padding:2px 8px; font-size:10px;">⚡ Thêm IP Hiện Tại Của Bạn</button>
+                </div>
+                <div class="scroll-box" style="max-height:260px; margin-top:6px;">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>ĐỊA CHỈ IP</th>
+                        <th>ĐẶC QUYỀN</th>
+                        <th style="text-align:right;">THAO TÁC</th>
+                      </tr>
+                    </thead>
+                    <tbody id="whitelistTableBody">
+                      <tr><td colspan="3" style="text-align:center; padding:16px; color:#64748b;">Đang tải Whitelist...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Manual Add to Blacklist Card -->
+            <div class="admin-card">
+              <div class="admin-card-header">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="font-size:16px;">⛔</span>
+                  <h3 style="font-size:14px; font-weight:800; color:#f43f5e;">
+                    Khóa IP Thủ Công (Manual Blacklist)
+                  </h3>
+                </div>
+                <span class="badge" style="background:rgba(244,63,94,0.15); color:#f43f5e; border:1px solid rgba(244,63,94,0.3);">
+                  Chặn Tức Thì
+                </span>
+              </div>
+              <div class="admin-card-body" style="display:flex; flex-direction:column; gap:12px;">
+                <div>
+                  <label style="display:block; font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:4px; text-transform:uppercase;">Địa chỉ IP Cần Khóa</label>
+                  <input type="text" id="manualBlacklistIp" placeholder="VD: 103.152.204.18" class="admin-input-styled" style="width:100%; font-family:monospace; font-size:12px; color:#f43f5e;">
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 120px; gap:10px;">
+                  <div>
+                    <label style="display:block; font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:4px; text-transform:uppercase;">Lý Do Khóa</label>
+                    <input type="text" id="manualBlacklistReason" value="Spam / Bypass Tool" class="admin-input-styled" style="width:100%; font-size:12px;">
+                  </div>
+                  <div>
+                    <label style="display:block; font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:4px; text-transform:uppercase;">Thời Gian (Phút)</label>
+                    <input type="number" id="manualBlacklistDuration" value="30" min="5" max="1440" class="admin-input-styled" style="width:100%; font-size:12px;">
+                  </div>
+                </div>
+                <div style="display:flex; justify-content:flex-end; margin-top:4px;">
+                  <button onclick="addManualBlacklist()" class="btn" style="background:#e11d48; color:#fff; padding:8px 18px; font-weight:bold; font-size:12px;">
+                    🚫 Khóa IP Này Ngay
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Blacklist Table Card -->
+          <div class="admin-card">
+            <div class="admin-card-header">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:16px;">🚨</span>
+                <h3 style="font-size:14px; font-weight:800; color:#cbd5e1;">
+                  Danh Sách Đen Chống Bypass (Blacklist IP Bị Khóa) (<span id="blacklistTotalCount" class="text-rose">0</span>)
+                </h3>
+              </div>
+              <span class="badge" style="background:rgba(244,63,94,0.15); color:#f43f5e; border:1px solid rgba(244,63,94,0.3);">
+                Tự Động & Thủ Công
+              </span>
+            </div>
+            <div class="scroll-box" style="max-height:360px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ĐỊA CHỈ IP</th>
+                    <th>LÝ DO KHÓA</th>
+                    <th>SỐ VI PHẠM (STRIKES)</th>
+                    <th>THỜI GIAN KHÓA</th>
+                    <th>CÒN LẠI</th>
+                    <th style="text-align:right;">HÀNH ĐỘNG KHẮC PHỤC</th>
+                  </tr>
+                </thead>
+                <tbody id="blacklistTableBody">
+                  <tr><td colspan="6" style="text-align:center; padding:24px; color:#64748b;">Đang tải danh sách Blacklist...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" style="position: fixed; bottom: 20px; right: 20px; background: #10b981; color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 12px; font-weight: bold; box-shadow: 0 10px 25px rgba(0,0,0,0.5); transform: translateY(100px); opacity: 0; transition: all 0.25s; z-index: 1002; pointer-events: none;">
+    <span id="toastMsg">Đã sao chép!</span>
+  </div>
+
+  <!-- JAVASCRIPT ENGINE & DUAL FALLBACK -->
+  <script>
+    let allLiveProxies = [];
+    let isPaused = false;
+    let countryChart = null;
+    let latencyChart = null;
+    let ws = null;
+    let fallbackPollTimer = null;
+
+    // Kiểm tra nếu mở dạng file://
+    if (window.location.protocol === 'file:') {
+      const warn = document.getElementById('fileProtocolWarn');
+      if (warn) warn.style.display = 'block';
+    }
+
+    // Toast Notification
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.innerText = msg;
+      toast.style.background = isError ? '#e11d48' : '#10b981';
+      toast.style.transform = 'translateY(0)';
+      toast.style.opacity = '1';
+      setTimeout(() => {
+        toast.style.transform = 'translateY(100px)';
+        toast.style.opacity = '0';
+      }, 2000);
+    }
+
+    // Clipboard
+    function copyToClipboard(text, msg = 'Đã sao chép!') {
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => showToast(msg)).catch(() => fallbackCopy(text, msg));
+      } else {
+        fallbackCopy(text, msg);
+      }
+    }
+
+    function fallbackCopy(text, msg) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast(msg);
+      } catch (e) {
+        prompt('Copy thủ công:', text);
+      }
+      document.body.removeChild(ta);
+    }
+
+    function copyAllLive() {
+      if (!allLiveProxies.length) {
+        showToast('Chưa có proxy sống nào để copy!', true);
+        return;
+      }
+      const text = allLiveProxies.map(p => `${p.proto}://${p.ip}:${p.port}`).join('\n');
+      copyToClipboard(text, `Đã copy ${allLiveProxies.length} proxy sống!`);
+    }
+
+    // Chart Init An Toàn (Không crash nếu mất mạng/thiếu Chart.js)
+    function initCharts() {
+      if (typeof Chart === 'undefined') {
+        console.warn('Chart.js CDN không tải được. Chế độ xem biểu đồ tạm tắt.');
+        return;
+      }
+      try {
+        const c1 = document.getElementById('countryChart');
+        if (c1) {
+          countryChart = new Chart(c1.getContext('2d'), {
+            type: 'bar',
+            data: { labels: [], datasets: [{ label: 'Proxy', data: [], backgroundColor: 'rgba(6, 182, 212, 0.7)', borderRadius: 6 }] },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { ticks: { color: '#94a3b8' }, grid: { color: '#161f33' } },
+                y: { ticks: { color: '#94a3b8' }, grid: { color: '#161f33' }, beginAtZero: true }
+              }
+            }
+          });
+        }
+
+        const c2 = document.getElementById('latencyChart');
+        if (c2) {
+          latencyChart = new Chart(c2.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+              labels: ['< 350ms (Ultra)', '350-650ms (Elite)', '> 650ms (Standard)'],
+              datasets: [{ data: [0, 0, 0], backgroundColor: ['#10b981', '#f59e0b', '#3b82f6'], borderColor: '#0d1322' }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 10 } } },
+              cutout: '70%'
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('Lỗi vẽ biểu đồ:', err);
+      }
+    }
+
+    function createRowHTML(p) {
+      let badgeStyle = 'background:rgba(6,182,212,0.15); color:#06b6d4;';
+      if (p.proto === 'socks5') badgeStyle = 'background:rgba(168,85,247,0.15); color:#a855f7;';
+      if (p.proto === 'socks4') badgeStyle = 'background:rgba(59,130,246,0.15); color:#3b82f6;';
+
+      let pingColor = '#10b981';
+      if (p.ping > 650) pingColor = '#f59e0b';
+      if (p.ping > 1200) pingColor = '#f43f5e';
+
+      const fullProxy = `${p.proto}://${p.ip}:${p.port}`;
+      const isElite = p.ping <= 650;
+      const isRes = !!p.is_residential;
+
+      return `
+        <tr>
+          <td>
+            <span class="badge" style="${badgeStyle}">${p.proto.toUpperCase()}</span>
+            ${isRes ? '<span class="badge" style="background:rgba(16,185,129,0.2); color:#10b981; border:1px solid rgba(16,185,129,0.4); margin-left:4px; font-size:10px;">🏡 DÂN CƯ</span>' : ''}
+          </td>
+          <td>
+            <span style="font-weight:700; color:#f1f5f9;">${p.ip}:${p.port}</span>
+            ${isElite ? '<span style="color:#f59e0b; margin-left:4px;" title="Elite Proxy">⭐</span>' : ''}
+          </td>
+          <td>
+            <span style="display:inline-flex; align-items:center; gap:4px;">
+              <span>${p.flag || '🌐'}</span>
+              <b style="color:#cbd5e1;">${p.country || '??'}</b>
+            </span>
+          </td>
+          <td style="font-weight:700; color:${pingColor};">${p.ping} ms</td>
+          <td style="color:#94a3b8;">
+            ${p.exit_ip ? `<span style="color:#cbd5e1;">${p.exit_ip}</span>` : '--'}
+            ${p.colo ? `<span style="font-size:10px; color:#64748b;">(${p.colo})</span>` : ''}
+          </td>
+          <td style="text-align:right;">
+            <button onclick="copyToClipboard('${fullProxy}', 'Đã copy: ${fullProxy}')" class="btn btn-dark" style="padding:3px 8px; font-size:11px;">
+              Copy
+            </button>
+          </td>
+        </tr>
+      `;
+    }
+
+    function applyFilters() {
+      const protoFilter = document.getElementById('filterProto').value;
+      const eliteOnly = document.getElementById('filterEliteOnly').checked;
+      const resOnly = document.getElementById('filterResidentialOnly')?.checked;
+      const query = document.getElementById('filterSearch').value.trim().toLowerCase();
+
+      const filtered = allLiveProxies.filter(p => {
+        if (protoFilter !== 'all' && p.proto.toLowerCase() !== protoFilter) return false;
+        if (eliteOnly && p.ping > 650) return false;
+        if (resOnly && !p.is_residential) return false;
+        if (query) {
+          const matchIp = p.ip.includes(query);
+          const matchPort = p.port.toString().includes(query);
+          const matchCountry = (p.country || '').toLowerCase().includes(query);
+          const matchExit = (p.exit_ip || '').toLowerCase().includes(query);
+          if (!matchIp && !matchPort && !matchCountry && !matchExit) return false;
+        }
+        return true;
+      });
+
+      const tbody = document.getElementById('proxyTableBody');
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align:center; padding:24px; color:#64748b;">
+              Không tìm thấy proxy nào khớp với bộ lọc.
+            </td>
+          </tr>
+        `;
+      } else {
+        tbody.innerHTML = filtered.slice(0, 150).map(createRowHTML).join('');
+      }
+
+      document.getElementById('tableCountBadge').innerText = `${filtered.length} / ${allLiveProxies.length} proxy`;
+    }
+
+    function appendLog(text, type = 'info') {
+      const box = document.getElementById('webConsoleLog');
+      if (!box) return;
+      const item = document.createElement('div');
+      
+      let color = '#94a3b8';
+      if (type === 'live') color = '#10b981';
+      if (type === 'elite') color = '#f59e0b';
+      if (type === 'system') color = '#06b6d4';
+      if (type === 'error') color = '#f43f5e';
+
+      const timeStr = new Date().toLocaleTimeString();
+      item.style.color = color;
+      item.style.marginBottom = '4px';
+      item.innerHTML = `<span style="color:#475569;">[${timeStr}]</span> ${text}`;
+      box.appendChild(item);
+
+      if (box.children.length > 150) box.removeChild(box.firstChild);
+      if (document.getElementById('autoScrollLog').checked) box.scrollTop = box.scrollHeight;
+    }
+
+    function clearConsoleLog() {
+      document.getElementById('webConsoleLog').innerHTML = '';
+    }
+
+    function handleNewLive(proxy) {
+      // Chống trùng lặp trong memory browser
+      const key = `${proxy.proto}://${proxy.ip}:${proxy.port}`;
+      if (allLiveProxies.some(p => `${p.proto}://${p.ip}:${p.port}` === key)) return;
+
+      allLiveProxies.unshift(proxy);
+      if (allLiveProxies.length > 1500) allLiveProxies.pop();
+
+      applyFilters();
+
+      const isElite = proxy.ping <= 650;
+      appendLog(
+        `⚡ [LIVE] ${proxy.proto.toUpperCase()}://${proxy.ip}:${proxy.port} • ${proxy.flag || ''} ${proxy.country || '??'} • ${proxy.ping}ms ${isElite ? '⭐ [ELITE]' : ''}`,
+        isElite ? 'elite' : 'live'
+      );
+    }
+
+    function updateDashboard(data) {
+      document.getElementById('statLive').innerText = Number(data.total_live || 0).toLocaleString();
+      document.getElementById('statElite').innerText = Number(data.elite_count || 0).toLocaleString();
+      document.getElementById('statChecked').innerText = Number(data.checked || 0).toLocaleString();
+      document.getElementById('statDead').innerText = Number(data.dead_count || 0).toLocaleString();
+      document.getElementById('statScraped').innerText = Number(data.total_scraped || 0).toLocaleString();
+      document.getElementById('statQueue').innerText = Number(data.queue_size || 0).toLocaleString();
+      document.getElementById('statSpeed').innerText = Number(data.speed || 0).toFixed(0);
+
+      const hitRate = data.checked > 0 ? ((data.total_live / data.checked) * 100).toFixed(2) : '0.00';
+      document.getElementById('statHitRate').innerText = `${hitRate}%`;
+      document.getElementById('statUltra').innerText = Number(data.tier_ultra || 0).toLocaleString();
+      document.getElementById('statAvgPing').innerText = data.avg_ping > 0 ? `${Math.round(data.avg_ping)} ms` : '-- ms';
+
+      if (document.getElementById('adminExactChecked')) {
+        document.getElementById('adminExactChecked').innerText = Number(data.checked || 0).toLocaleString();
+        document.getElementById('adminExactLive').innerText = Number(data.total_live || 0).toLocaleString();
+        document.getElementById('adminExactDead').innerText = Number(data.dead_count || 0).toLocaleString();
+        if (document.getElementById('adminExactResidential')) {
+          document.getElementById('adminExactResidential').innerText = Number(data.residential_count || 0).toLocaleString();
+        }
+        if (document.getElementById('adminExactDatacenter')) {
+          document.getElementById('adminExactDatacenter').innerText = Number(data.datacenter_count || 0).toLocaleString();
+        }
+        if (document.getElementById('adminExactBypassBlocked')) {
+          document.getElementById('adminExactBypassBlocked').innerText = Number(data.bypass_blocked_count || 0).toLocaleString();
+        }
+        if (document.getElementById('adminExactGetkeySuccess')) {
+          document.getElementById('adminExactGetkeySuccess').innerText = Number(data.getkey_success_count || 0).toLocaleString();
+        }
+        if (data.active_clients_count !== undefined) {
+          document.getElementById('adminExactClients').innerText = data.active_clients_count;
+        }
+      }
+
+      if (data.proto_live) {
+        document.getElementById('protoHttp').innerText = data.proto_live.http || 0;
+        document.getElementById('protoSocks4').innerText = data.proto_live.socks4 || 0;
+        document.getElementById('protoSocks5').innerText = data.proto_live.socks5 || 0;
+      }
+
+      document.getElementById('copyLiveCount').innerText = data.total_live || 0;
+      document.getElementById('dlGoodCount').innerText = data.total_live || 0;
+      document.getElementById('dlEliteCount').innerText = data.elite_count || 0;
+      if (document.getElementById('dlResidentialCount')) {
+        document.getElementById('dlResidentialCount').innerText = data.residential_count || 0;
+      }
+      document.getElementById('dlHttpCount').innerText = data.proto_live?.http || 0;
+      document.getElementById('dlSocks4Count').innerText = data.proto_live?.socks4 || 0;
+      document.getElementById('dlSocks5Count').innerText = data.proto_live?.socks5 || 0;
+
+      if (data.stage) document.getElementById('scannerStage').innerText = data.stage;
+      if (data.cycle) document.getElementById('scannerCycle').innerText = `#${data.cycle}`;
+      if (data.sources_total) {
+        const scEl = document.getElementById('sourcesCountHeader');
+        if (scEl) scEl.innerText = `${data.sources_total} Sources API`;
+      }
+      if (data.active_clients_count !== undefined) {
+        const clEl = document.getElementById('activeClientsHeader');
+        if (clEl) clEl.innerText = `${data.active_clients_count} Clients Online`;
+      }
+
+      if (latencyChart) {
+        try {
+          const ultra = data.tier_ultra || 0;
+          const fast = (data.elite_count || 0) - ultra;
+          const standard = (data.total_live || 0) - (data.elite_count || 0);
+          latencyChart.data.datasets[0].data = [ultra, Math.max(0, fast), Math.max(0, standard)];
+          latencyChart.update('none');
+        } catch(e) {}
+      }
+
+      if (countryChart && data.top_countries) {
+        try {
+          const labels = data.top_countries.map(c => `${c[2] || ''} ${c[0]}`);
+          const values = data.top_countries.map(c => c[1]);
+          countryChart.data.labels = labels;
+          countryChart.data.datasets[0].data = values;
+          countryChart.update('none');
+          document.getElementById('totalCountries').innerText = `${data.total_countries_count || 0} quốc gia`;
+        } catch(e) {}
+      }
+    }
+
+    // Kết Nối WebSocket Kèm Cơ Chế HTTP Polling Fallback
+    function connectWebSocket() {
+      const loc = window.location;
+      let host = loc.host;
+      if (!host || loc.protocol === 'file:') host = '127.0.0.1:5000';
+
+      const wsUrl = (loc.protocol === 'https:' ? 'wss://' : 'ws://') + host + '/ws';
+      const wsDot = document.getElementById('wsDot');
+      const wsStatus = document.getElementById('wsStatus');
+
+      try {
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          wsDot.style.background = '#10b981';
+          wsStatus.innerText = 'Realtime Connected';
+          wsStatus.style.color = '#10b981';
+          appendLog('Đã kết nối thành công WebSocket.', 'system');
+          // Tắt timer polling nếu websocket hoạt động
+          if (fallbackPollTimer) { clearInterval(fallbackPollTimer); fallbackPollTimer = null; }
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'state') updateDashboard(msg.data);
+            else if (msg.type === 'new_live') handleNewLive(msg.data);
+            else if (msg.type === 'batch_live' && Array.isArray(msg.proxies)) {
+              msg.proxies.forEach(p => handleNewLive(p));
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        };
+
+        ws.onclose = () => {
+          wsDot.style.background = '#f43f5e';
+          wsStatus.innerText = 'Đứt WS (Dùng HTTP Poll...)';
+          wsStatus.style.color = '#f59e0b';
+          startFallbackPolling();
+          setTimeout(connectWebSocket, 3000);
+        };
+
+        ws.onerror = () => {
+          ws.close();
+        };
+      } catch (err) {
+        startFallbackPolling();
+      }
+    }
+
+    // Cơ chế HTTP Fallback Polling (Bảo hiểm 100% nếu mạng chặn WS)
+    function startFallbackPolling() {
+      if (fallbackPollTimer) return;
+      fallbackPollTimer = setInterval(() => {
+        fetch('/api/stats')
+          .then(r => r.json())
+          .then(data => updateDashboard(data))
+          .catch(() => {});
+      }, 1500);
+    }
+
+    function toggleScanner() {
+      isPaused = !isPaused;
+      const btn = document.getElementById('btnToggle');
+      const icon = document.getElementById('btnToggleIcon');
+      const text = document.getElementById('btnToggleText');
+
+      const action = isPaused ? 'pause' : 'resume';
+      if (isPaused) {
+        btn.className = 'btn';
+        btn.style.background = '#f59e0b';
+        btn.style.color = '#fff';
+        icon.innerText = '▶️';
+        text.innerText = 'Tiếp Tục';
+      } else {
+        btn.className = 'btn btn-green';
+        icon.innerText = '⏸️';
+        text.innerText = 'Tạm Dừng';
+      }
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ action: action }));
+      } else {
+        fetch('/api/control', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: action })
+        }).catch(() => {});
+      }
+      showToast(isPaused ? 'Đã tạm dừng quét.' : 'Đã tiếp tục quét.');
+    }
+
+    function rescanSources() {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ action: 'rescan' }));
+      } else {
+        fetch('/api/control', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'rescan' })
+        }).catch(() => {});
+      }
+      showToast('Đã gửi yêu cầu cào lại các nguồn VIP!');
+    }
+
+    function triggerGitUpdate() {
+      if (!confirm("Bạn có chắc muốn kéo code mới nhất từ Git và khởi động lại tool trên host?")) return;
+      showToast("Đang kết nối Git để kéo code mới...", false);
+      const btn = document.getElementById("btnGitUpdate");
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = "⏳ Đang kéo...";
+      }
+      fetch('/api/update', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+          if (data.status === 'ok') {
+            showToast("✅ " + data.message);
+            appendLog(`[GIT] ${data.git_output}`, 'system');
+            setTimeout(() => {
+              window.location.reload();
+            }, 3500);
+          } else {
+            showToast("❌ Lỗi: " + (data.error || "Không thể cập nhật"), true);
+            if (btn) {
+              btn.disabled = false;
+              btn.innerText = "🚀 Cập Nhật Git";
+            }
+          }
+        })
+        .catch(err => {
+          showToast("❌ Không thể kết nối server", true);
+          if (btn) {
+            btn.disabled = false;
+            btn.innerText = "🚀 Cập Nhật Git";
+          }
+        });
+    }
+
+    // ================= SECRET ADMIN PANEL LOGIC =================
+    let logoClicks = 0;
+    let lastLogoClick = 0;
+    let adminToken = sessionStorage.getItem("death_admin_token") || "";
+    let allKeysCache = [];
+
+    function handleSecretLogoClick() {
+      const now = Date.now();
+      if (now - lastLogoClick > 2200) logoClicks = 1;
+      else logoClicks++;
+      lastLogoClick = now;
+
+      if (logoClicks >= 5) {
+        logoClicks = 0;
+        openAdminModal();
+      }
+    }
+
+    // Tổ hợp phím bí mật Ctrl + Shift + A
+    window.addEventListener("keydown", (e) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === "A" || e.key === "a")) {
+        e.preventDefault();
+        openAdminModal();
+      }
+    });
+
+    let adminPollTimer = null;
+
+    function switchAdminTab(tabName) {
+      document.querySelectorAll('.admin-tab-content').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('.admin-nav-tab').forEach(btn => btn.classList.remove('active'));
+
+      const activeContent = document.getElementById('adminTabContent_' + tabName);
+      if (activeContent) {
+        activeContent.style.display = 'block';
+      }
+
+      const activeBtn = document.getElementById('adminTabBtn_' + tabName);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      if (tabName === 'security') {
+        fetchAdminSecurityLists();
+      }
+      if (tabName === 'settings') {
+        fetchAdminShortenerLinks();
+      }
+    }
+
+    function fetchAdminSettings() {
+      if (document.getElementById("linkDisplayFront")) {
+        document.getElementById("linkDisplayFront").innerText = window.location.origin + "/getkey";
+      }
+      if (document.getElementById("linkDisplayShortener")) {
+        document.getElementById("linkDisplayShortener").innerText = window.location.origin + "/getkey/shortener";
+      }
+      if (document.getElementById("linkDisplayMiddle")) {
+        document.getElementById("linkDisplayMiddle").innerText = window.location.origin + "/getkey/middle";
+      }
+      if (document.getElementById("linkDisplayEnd")) {
+        document.getElementById("linkDisplayEnd").innerText = window.location.origin + "/getkey/end";
+      }
+
+      fetch("/api/stats")
+        .then(r => r.json())
+        .then(data => {
+          if (data) {
+            const elWebhook = document.getElementById("adminDiscordWebhook");
+            if (elWebhook) elWebhook.value = data.discord_webhook || "";
+
+            const elElite = document.getElementById("adminDiscordNotifyElite");
+            if (elElite) elElite.checked = data.discord_notify_elite !== false;
+
+            const elRes = document.getElementById("adminDiscordNotifyResidential");
+            if (elRes) elRes.checked = data.discord_notify_residential !== false;
+
+            const elInvite = document.getElementById("adminDiscordInvite");
+            if (elInvite) elInvite.value = data.required_discord_invite || "https://discord.gg/2zuwDpJaNP";
+
+            const elServer = document.getElementById("adminDiscordServerName");
+            if (elServer) elServer.value = data.required_discord_server_name || "Death Silence Community";
+
+            const elCheckDur = document.getElementById("adminDiscordCheckDuration");
+            if (elCheckDur) elCheckDur.value = data.discord_check_duration || 90;
+
+            const elTotalMin = document.getElementById("adminTotalMinDuration");
+            if (elTotalMin) elTotalMin.value = data.total_min_key_duration !== undefined ? data.total_min_key_duration : 300;
+
+            const elMaxKeys = document.getElementById("adminMaxKeysPerIp");
+            if (elMaxKeys) elMaxKeys.checked = data.max_keys_per_ip_24h !== false;
+
+            const elIpBind = document.getElementById("adminEnforceIpBinding");
+            if (elIpBind) elIpBind.checked = data.enforce_ip_binding !== false;
+
+            const elPow = document.getElementById("adminEnforcePoW");
+            if (elPow) elPow.checked = data.enforce_pow !== false;
+
+            const elShortEngine = document.getElementById("adminShortenerEngine");
+            if (elShortEngine) elShortEngine.value = data.shortener_engine || "death";
+
+            const elDeathDur = document.getElementById("adminDeathShortenerDuration");
+            if (elDeathDur) elDeathDur.value = data.death_shortener_duration || 15;
+
+            const elMinDur = document.getElementById("adminMinBypassDuration");
+            if (elMinDur) elMinDur.value = data.min_bypass_duration !== undefined ? data.min_bypass_duration : 60;
+
+            const elLink4m = document.getElementById("adminLink4mUrl");
+            if (elLink4m) elLink4m.value = data.link4m_url || "";
+
+            const elLink4mApi = document.getElementById("adminLink4mApiToken");
+            if (elLink4mApi) elLink4mApi.value = data.link4m_api_token || "";
+          }
+        })
+        .catch(() => {});
+    }
+
+    function copySpecificLink(path) {
+      const link = window.location.origin + path;
+      navigator.clipboard.writeText(link).then(() => {
+        showToast("📋 Đã copy link: " + link);
+      }).catch(() => {
+        prompt("Copy link:", link);
+      });
+    }
+
+    function copyIntermediaryLink() {
+      copySpecificLink("/getkey/middle");
+    }
+
+    function openAdminModal() {
+      if (adminToken) {
+        document.getElementById("adminPanelModal").style.display = "block";
+        switchAdminTab('telemetry');
+        fetchAdminKeys();
+        fetchAdminWorkers();
+        fetchAdminSettings();
+        fetchAdminShortenerLinks();
+        if (adminPollTimer) clearInterval(adminPollTimer);
+        adminPollTimer = setInterval(() => {
+          if (document.getElementById("adminPanelModal").style.display === "block") {
+            fetchAdminWorkers();
+          }
+        }, 2000);
+      } else {
+        document.getElementById("adminLoginModal").style.display = "flex";
+        document.getElementById("adminPass").focus();
+      }
+    }
+
+    function closeAdminLogin() {
+      document.getElementById("adminLoginModal").style.display = "none";
+      document.getElementById("loginAlertBox").style.display = "none";
+    }
+
+    function closeAdminPanel() {
+      document.getElementById("adminPanelModal").style.display = "none";
+      if (adminPollTimer) { clearInterval(adminPollTimer); adminPollTimer = null; }
+    }
+
+    function submitAdminLogin() {
+      const u = document.getElementById("adminUser").value.trim();
+      const p = document.getElementById("adminPass").value.trim();
+      const alertBox = document.getElementById("loginAlertBox");
+      const btn = document.getElementById("btnLoginAdmin");
+
+      if (!u || !p) {
+        alertBox.innerText = "Vui lòng nhập tài khoản và mật khẩu!";
+        alertBox.style.display = "block";
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = "Đang kiểm tra...";
+
+      fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: u, password: p })
+      })
+      .then(async r => {
+        const data = await r.json();
+        if (r.ok && data.status === "ok") {
+          adminToken = data.token;
+          sessionStorage.setItem("death_admin_token", adminToken);
+          closeAdminLogin();
+          document.getElementById("adminPanelModal").style.display = "block";
+          switchAdminTab('telemetry');
+          showToast("👑 Đăng nhập Admin thành công!");
+          fetchAdminKeys();
+          fetchAdminWorkers();
+        } else {
+          alertBox.innerText = data.message || "Đăng nhập thất bại!";
+          alertBox.style.display = "block";
+        }
+      })
+      .catch(err => {
+        alertBox.innerText = "Lỗi kết nối server!";
+        alertBox.style.display = "block";
+      })
+      .finally(() => {
+        btn.disabled = false;
+        btn.innerText = "Đăng Nhập Quản Trị";
+      });
+    }
+
+    function logoutAdmin() {
+      adminToken = "";
+      sessionStorage.removeItem("death_admin_token");
+      closeAdminPanel();
+      showToast("Đã đăng xuất quyền Admin.");
+    }
+
+    function fetchAdminWorkers() {
+      if (!adminToken) return;
+      fetch("/api/admin/workers", {
+        headers: { "X-Admin-Token": adminToken }
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "ok") {
+          renderWorkersTable(data.workers || []);
+          document.getElementById("adminExactChecked").innerText = Number(data.exact_checked || 0).toLocaleString();
+          document.getElementById("adminExactLive").innerText = Number(data.exact_live || 0).toLocaleString();
+          document.getElementById("adminExactDead").innerText = Number(data.exact_dead || 0).toLocaleString();
+          if (document.getElementById("adminExactResidential")) {
+            document.getElementById("adminExactResidential").innerText = Number(data.residential_count || 0).toLocaleString();
+          }
+          if (document.getElementById("adminExactDatacenter")) {
+            document.getElementById("adminExactDatacenter").innerText = Number(data.datacenter_count || 0).toLocaleString();
+          }
+          if (document.getElementById("adminExactBypassBlocked")) {
+            document.getElementById("adminExactBypassBlocked").innerText = Number(data.bypass_blocked_count || 0).toLocaleString();
+          }
+          if (document.getElementById("adminExactGetkeySuccess")) {
+            document.getElementById("adminExactGetkeySuccess").innerText = Number(data.getkey_success_count || 0).toLocaleString();
+          }
+          document.getElementById("adminExactClients").innerText = data.total_active || 0;
+
+          const targetInput = document.getElementById("adminTargetUrlInput");
+          if (targetInput && (!targetInput.value || targetInput.dataset.initial !== "true")) {
+            targetInput.value = data.ping_target || "";
+            targetInput.dataset.initial = "true";
+          }
+
+          // Điền cài đặt Webhook và Anti-Bypass
+          const wbInput = document.getElementById("adminDiscordWebhook");
+          if (wbInput && !wbInput.dataset.userEdited) {
+            wbInput.value = data.discord_webhook || "";
+            wbInput.dataset.userEdited = "true";
+          }
+          const durInput = document.getElementById("adminMinBypassDuration");
+          if (durInput && !durInput.dataset.userEdited) {
+            durInput.value = data.min_bypass_duration || 60;
+            durInput.dataset.userEdited = "true";
+          }
+          const linkInput = document.getElementById("adminLink4mUrl");
+          if (linkInput && !linkInput.dataset.userEdited) {
+            linkInput.value = data.link4m_url || "";
+            linkInput.dataset.userEdited = "true";
+          }
+        }
+      })
+      .catch(() => {});
+    }
+
+    function renderWorkersTable(workers) {
+      document.getElementById("workerTotalCount").innerText = workers.length;
+      const tbody = document.getElementById("workersTableBody");
+      if (!workers.length) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:16px; color:#64748b;">Chưa có client worker nào đang kết nối.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = workers.map(w => `
+        <tr>
+          <td style="font-family:monospace; color:#06b6d4; font-weight:bold;">${w.ip}</td>
+          <td style="font-family:monospace; color:#cbd5e1;">${w.key_short}</td>
+          <td style="color:#10b981; font-weight:bold;">${w.speed} req/s</td>
+          <td style="color:#fff;">${Number(w.checked).toLocaleString()}</td>
+          <td style="color:#10b981; font-weight:bold;">${Number(w.live).toLocaleString()}</td>
+          <td style="color:#94a3b8;">${w.connected_at}</td>
+          <td><span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3);">ONLINE (${w.last_seen_sec}s ago)</span></td>
+        </tr>
+      `).join("");
+    }
+
+    function submitAdminTargetUrl() {
+      const target = document.getElementById("adminTargetUrlInput").value.trim();
+      if (!target || (!target.startsWith("http://") && !target.startsWith("https://"))) {
+        showToast("Target URL phải bắt đầu bằng http:// hoặc https://", true);
+        return;
+      }
+      fetch("/api/admin/target", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ target_url: target })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "ok") {
+          showToast("🎯 " + data.message);
+          fetchAdminWorkers();
+        } else {
+          showToast(data.message || "Lỗi cập nhật target", true);
+        }
+      })
+      .catch(() => showToast("Lỗi kết nối", true));
+    }
+
+    function fetchAdminKeys() {
+      if (!adminToken) return;
+      fetch("/api/admin/keys", {
+        headers: { "X-Admin-Token": adminToken }
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "ok") {
+          allKeysCache = data.keys || [];
+          renderKeysTable(allKeysCache);
+        } else if (data.status === "error" && r.status === 401) {
+          logoutAdmin();
+          openAdminModal();
+        }
+      })
+      .catch(() => {});
+    }
+
+    function renderKeysTable(keys) {
+      document.getElementById("keyTotalCount").innerText = keys.length;
+      const tbody = document.getElementById("keysTableBody");
+      if (!keys.length) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:24px; color:#64748b;">Chưa có key nào được tạo.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = keys.map(k => {
+        const isBanned = k.status === "banned";
+        let statusBadge = "";
+        if (k.status === "unactivated") {
+          statusBadge = `<span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3);">UNACTIVATED</span>`;
+        } else if (k.status === "active") {
+          statusBadge = `<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3);">ACTIVE</span>`;
+        } else if (k.status === "expired") {
+          statusBadge = `<span class="badge" style="background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3);">EXPIRED</span>`;
+        } else {
+          statusBadge = `<span class="badge" style="background:rgba(100,116,139,0.2); color:#94a3b8; border:1px solid rgba(100,116,139,0.3);">BANNED</span>`;
+        }
+
+        let typeBadge = "";
+        if (k.key_type === "free_24h") {
+          typeBadge = `<span class="badge" style="background:rgba(6,182,212,0.15); color:#06b6d4; border:1px solid rgba(6,182,212,0.3);">⚡ FREE 24H</span>`;
+        } else if (k.key_type === "paid_lifetime" || k.days === 0) {
+          typeBadge = `<span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3);">💎 LIFETIME</span>`;
+        } else {
+          typeBadge = `<span class="badge" style="background:rgba(148,163,184,0.15); color:#cbd5e1; border:1px solid rgba(148,163,184,0.3);">CUSTOM</span>`;
+        }
+
+        return `
+          <tr style="${isBanned ? 'opacity:0.6;' : ''}">
+            <td style="font-weight:bold; color:#06b6d4; font-family:monospace;">
+              ${k.key}
+              <button onclick="copyToClipboard('${k.key}', 'Đã copy key!')" class="btn btn-dark" style="padding:2px 6px; font-size:10px; margin-left:6px;">Copy</button>
+            </td>
+            <td>${typeBadge}</td>
+            <td style="color:#cbd5e1;">${k.expires_at}</td>
+            <td>${statusBadge}</td>
+            <td style="color:#94a3b8;">${k.notes || '--'}</td>
+            <td style="color:#94a3b8; font-family:monospace;">${k.last_ip || '--'}</td>
+            <td style="color:#10b981; font-weight:bold;">${k.total_submitted || 0}</td>
+            <td style="text-align:right;">
+              <button onclick="toggleBanKey('${k.key}', '${k.status}')" class="btn btn-dark" style="padding:3px 8px; font-size:11px; margin-right:4px;">
+                ${isBanned ? '🟢 Mở Khóa' : '🔴 Khóa Key'}
+              </button>
+              <button onclick="deleteKey('${k.key}')" class="btn" style="background:#e11d48; color:#fff; padding:3px 8px; font-size:11px;">
+                🗑️ Xóa
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function filterKeyTable() {
+      const q = document.getElementById("searchKeyInput").value.trim().toLowerCase();
+      if (!q) {
+        renderKeysTable(allKeysCache);
+        return;
+      }
+      const filtered = allKeysCache.filter(k => 
+        k.key.toLowerCase().includes(q) || (k.notes || "").toLowerCase().includes(q) || (k.last_ip || "").includes(q)
+      );
+      renderKeysTable(filtered);
+    }
+
+    // 1-Click Sinh 10 Key Free Link4M
+    function quickGenLink4MKeys() {
+      fetch("/api/admin/gen-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ key_type: "free_24h", days: 1, count: 10, notes: "Link4M Free 24h" })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "ok") {
+          const keysStr = data.keys.map(k => k.key).join("\n");
+          document.getElementById("batchKeysTitle").innerText = `⚡ Đã sinh thành công 10 Key Free Link4M (24h sau kích hoạt):`;
+          document.getElementById("batchKeysTextarea").value = keysStr;
+          document.getElementById("batchKeysModal").style.display = "block";
+          showToast("⚡ Đã sinh thành công 10 Key Link4M!");
+          fetchAdminKeys();
+        } else {
+          showToast(data.message || "Lỗi sinh key", true);
+        }
+      })
+      .catch(() => showToast("Lỗi kết nối", true));
+    }
+
+    // 1-Click Sinh Key Paid Lifetime
+    function quickGenLifetimeKey() {
+      fetch("/api/admin/gen-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ key_type: "paid_lifetime", days: 0, count: 1, notes: "VIP Paid Lifetime" })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "ok") {
+          showToast(`💎 Đã sinh thành công Key Paid: ${data.keys[0].key}`);
+          fetchAdminKeys();
+        } else {
+          showToast(data.message || "Lỗi sinh key", true);
+        }
+      })
+      .catch(() => showToast("Lỗi kết nối", true));
+    }
+
+    function copyBatchKeys() {
+      const txt = document.getElementById("batchKeysTextarea").value;
+      if (!txt) return;
+      copyToClipboard(txt, "Đã copy toàn bộ 10 key để up Link4M!");
+    }
+
+    function submitGenKey() {
+      const days = document.getElementById("genDays").value;
+      const count = document.getElementById("genCount").value;
+      const notes = document.getElementById("genNotes").value.trim();
+      const keyType = days == 1 ? "free_24h" : (days == 0 ? "paid_lifetime" : "custom");
+
+      fetch("/api/admin/gen-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ days: days, count: count, notes: notes, key_type: keyType })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "ok") {
+          showToast(`⚡ Đã sinh thành công ${data.keys.length} key!`);
+          document.getElementById("genNotes").value = "";
+          fetchAdminKeys();
+        } else {
+          showToast(data.message || "Lỗi sinh key", true);
+        }
+      })
+      .catch(() => showToast("Lỗi kết nối", true));
+    }
+
+    function toggleBanKey(key, currentStatus) {
+      const newStatus = currentStatus === "banned" ? "active" : "banned";
+      fetch("/api/admin/revoke-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ key: key, status: newStatus })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "ok") {
+          showToast(data.message);
+          fetchAdminKeys();
+        }
+      });
+    }
+
+    function deleteKey(key) {
+      if (!confirm(`Bạn có chắc muốn xóa hoàn toàn key [${key}]?`)) return;
+      fetch("/api/admin/delete-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ key: key })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "ok") {
+          showToast("Đã xóa key.");
+          fetchAdminKeys();
+        }
+      });
+    }
+
+    // Lưu Cấu Hình Hệ Thống (Discord Webhook & Anti-Bypass)
+    function saveSystemSettings() {
+      const webhook = document.getElementById("adminDiscordWebhook") ? document.getElementById("adminDiscordWebhook").value.trim() : "";
+      const notifyElite = document.getElementById("adminDiscordNotifyElite") ? document.getElementById("adminDiscordNotifyElite").checked : true;
+      const notifyRes = document.getElementById("adminDiscordNotifyResidential") ? document.getElementById("adminDiscordNotifyResidential").checked : true;
+      const discordInvite = document.getElementById("adminDiscordInvite") ? document.getElementById("adminDiscordInvite").value.trim() : "https://discord.gg/2zuwDpJaNP";
+      const discordServerName = document.getElementById("adminDiscordServerName") ? document.getElementById("adminDiscordServerName").value.trim() : "Death Silence Community";
+      const discordCheckDur = document.getElementById("adminDiscordCheckDuration") ? (parseInt(document.getElementById("adminDiscordCheckDuration").value) || 90) : 90;
+      const totalMinDur = document.getElementById("adminTotalMinDuration") ? (parseInt(document.getElementById("adminTotalMinDuration").value) || 300) : 300;
+      const maxKeysPerIp = document.getElementById("adminMaxKeysPerIp") ? document.getElementById("adminMaxKeysPerIp").checked : true;
+      const enforceIpBinding = document.getElementById("adminEnforceIpBinding") ? document.getElementById("adminEnforceIpBinding").checked : true;
+      const enforcePoW = document.getElementById("adminEnforcePoW") ? document.getElementById("adminEnforcePoW").checked : true;
+
+      // Tùy chọn mở rộng (nếu có element)
+      const elMinBypass = document.getElementById("adminMinBypassDuration");
+      const minDuration = elMinBypass ? (parseInt(elMinBypass.value) || 0) : totalMinDur;
+      const elLink4m = document.getElementById("adminLink4mUrl");
+      const link4m = elLink4m ? elLink4m.value.trim() : "";
+      const elLink4mApi = document.getElementById("adminLink4mApiToken");
+      const link4mApi = elLink4mApi ? elLink4mApi.value.trim() : "";
+      const elShortEngine = document.getElementById("adminShortenerEngine");
+      const shortenerEngine = elShortEngine ? elShortEngine.value : "death";
+      const elDeathDur = document.getElementById("adminDeathShortenerDuration");
+      const deathDuration = elDeathDur ? (parseInt(elDeathDur.value) || 15) : discordCheckDur;
+
+      fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({
+          discord_webhook: webhook,
+          discord_notify_elite: notifyElite,
+          discord_notify_residential: notifyRes,
+          min_bypass_duration: minDuration,
+          link4m_url: link4m,
+          link4m_api_token: link4mApi,
+          shortener_engine: shortenerEngine,
+          death_shortener_duration: deathDuration,
+          required_discord_invite: discordInvite,
+          required_discord_server_name: discordServerName,
+          discord_check_duration: discordCheckDur,
+          total_min_key_duration: totalMinDur,
+          max_keys_per_ip_24h: maxKeysPerIp,
+          enforce_ip_binding: enforceIpBinding,
+          enforce_pow: enforcePoW
+        })
+      })
+      .then(async r => {
+        const data = await r.json().catch(() => ({}));
+        if (r.ok && data.status === "ok") {
+          showToast("💾 " + (data.message || "Đã lưu cài đặt hệ thống thành công!"));
+          fetchAdminSettings();
+        } else {
+          showToast("❌ " + (data.message || "Lỗi lưu cài đặt"), true);
+        }
+      })
+      .catch(err => showToast("❌ Lỗi kết nối máy chủ: " + (err.message || err), true));
+    }
+
+    // ================= ADMIN SECURITY LISTS (WHITELIST & BLACKLIST) =================
+    let currentClientIpCache = "";
+
+    function fetchAdminSecurityLists() {
+      if (!adminToken) return;
+      fetch("/api/admin/security/lists", {
+        headers: { "X-Admin-Token": adminToken }
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "ok") {
+          currentClientIpCache = data.client_ip || "";
+          const ipDisp = document.getElementById("adminCurrentIpDisplay");
+          if (ipDisp) ipDisp.innerText = currentClientIpCache || "127.0.0.1";
+          renderSecurityLists(data);
+        } else if (data.status === "error" && r.status === 401) {
+          logoutAdmin();
+        }
+      })
+      .catch(() => {});
+    }
+
+    function renderSecurityLists(data) {
+      const wl = data.whitelist || [];
+      const bl = data.blacklist || [];
+
+      // Whitelist
+      document.getElementById("whitelistTotalCount").innerText = wl.length;
+      const wlBody = document.getElementById("whitelistTableBody");
+      if (!wl.length) {
+        wlBody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:16px; color:#64748b;">Danh sách Whitelist đang rỗng.</td></tr>`;
+      } else {
+        wlBody.innerHTML = wl.map(ip => `
+          <tr>
+            <td style="font-family:monospace; color:#10b981; font-weight:bold;">${ip}</td>
+            <td><span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3);">⚡ Miễn 5 Phút & Anti-Ban</span></td>
+            <td style="text-align:right;">
+              <button onclick="removeWhitelist('${ip}')" class="btn" style="background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); padding:3px 8px; font-size:11px;">
+                🗑️ Xóa
+              </button>
+            </td>
+          </tr>
+        `).join("");
+      }
+
+      // Blacklist
+      document.getElementById("blacklistTotalCount").innerText = bl.length;
+      const blBody = document.getElementById("blacklistTableBody");
+      if (!bl.length) {
+        blBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#10b981; font-weight:bold;">🎉 Không có IP nào đang bị Blacklist! Hệ thống hoạt động an toàn.</td></tr>`;
+      } else {
+        blBody.innerHTML = bl.map(item => {
+          let remStr = "--";
+          if (item.remaining_sec > 0) {
+            const m = Math.floor(item.remaining_sec / 60);
+            const s = item.remaining_sec % 60;
+            remStr = `<span style="color:#f59e0b; font-weight:bold;">${m}m ${s}s</span>`;
+          } else if (item.remaining_sec === -1) {
+            remStr = `<span style="color:#ef4444; font-weight:bold;">Vĩnh viễn</span>`;
+          } else {
+            remStr = `<span style="color:#94a3b8;">Đã hết hạn</span>`;
+          }
+          return `
+            <tr>
+              <td style="font-family:monospace; color:#f43f5e; font-weight:bold;">${item.ip}</td>
+              <td style="color:#cbd5e1;">${item.reason || 'Bypass Bot'}</td>
+              <td style="color:#f59e0b; font-weight:bold;">${item.strikes || 3} lần</td>
+              <td style="color:#94a3b8; font-size:11px;">${new Date(item.banned_at * 1000).toLocaleTimeString()}</td>
+              <td>${remStr}</td>
+              <td style="text-align:right;">
+                <button onclick="unblacklistIp('${item.ip}')" class="btn btn-green" style="padding:4px 10px; font-size:11px; font-weight:bold;">
+                  🟢 Mở Khóa (Unban 1-Click)
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      }
+    }
+
+    function addCurrentIpToWhitelist() {
+      if (currentClientIpCache) {
+        document.getElementById("addWhitelistInput").value = currentClientIpCache;
+        addManualWhitelist();
+      } else {
+        showToast("Chưa xác định được IP!", true);
+      }
+    }
+
+    function addManualWhitelist() {
+      const ip = document.getElementById("addWhitelistInput").value.trim();
+      if (!ip) {
+        showToast("Vui lòng nhập địa chỉ IP cần Whitelist!", true);
+        return;
+      }
+      fetch("/api/admin/security/whitelist/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ ip: ip })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "ok") {
+          showToast("🟢 " + data.message);
+          document.getElementById("addWhitelistInput").value = "";
+          fetchAdminSecurityLists();
+        } else {
+          showToast(data.message || "Lỗi thêm Whitelist", true);
+        }
+      })
+      .catch(() => showToast("Lỗi kết nối", true));
+    }
+
+    function removeWhitelist(ip) {
+      if (!confirm(`Xóa IP ${ip} khỏi Whitelist?`)) return;
+      fetch("/api/admin/security/whitelist/remove", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ ip: ip })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "ok") {
+          showToast("Đã xóa khỏi Whitelist.");
+          fetchAdminSecurityLists();
+        } else {
+          showToast(data.message || "Lỗi xóa", true);
+        }
+      })
+      .catch(() => showToast("Lỗi kết nối", true));
+    }
+
+    function unblacklistIp(ip) {
+      fetch("/api/admin/security/unblacklist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ ip: ip })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "ok") {
+          showToast("🎉 " + data.message);
+          fetchAdminSecurityLists();
+        } else {
+          showToast(data.message || "Lỗi mở khóa", true);
+        }
+      })
+      .catch(() => showToast("Lỗi kết nối", true));
+    }
+
+    function addManualBlacklist() {
+      const ip = document.getElementById("manualBlacklistIp").value.trim();
+      const reason = document.getElementById("manualBlacklistReason").value.trim() || "Khóa thủ công";
+      const duration = parseInt(document.getElementById("manualBlacklistDuration").value) || 30;
+      if (!ip) {
+        showToast("Vui lòng nhập địa chỉ IP cần khóa!", true);
+        return;
+      }
+      fetch("/api/admin/security/blacklist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ ip: ip, reason: reason, duration: duration })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "ok") {
+          showToast("🚫 " + data.message);
+          document.getElementById("manualBlacklistIp").value = "";
+          fetchAdminSecurityLists();
+        } else {
+          showToast(data.message || "Lỗi khóa IP", true);
+        }
+      })
+      .catch(() => showToast("Lỗi kết nối", true));
+    }
+
+    // Gửi Thử Tin Nhắn Webhook Discord
+    function testDiscordWebhook() {
+      const webhook = document.getElementById("adminDiscordWebhook") ? document.getElementById("adminDiscordWebhook").value.trim() : "";
+      if (!webhook) {
+        showToast("Vui lòng nhập Discord Webhook URL trước!", true);
+        return;
+      }
+      showToast("⏳ Đang gửi tin nhắn thử nghiệm sang Discord...", false);
+      fetch("/api/admin/test-webhook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ discord_webhook: webhook })
+      })
+      .then(async r => {
+        const data = await r.json().catch(() => ({}));
+        if (r.ok && data.status === "ok") {
+          showToast("✅ " + data.message);
+        } else {
+          showToast("❌ " + (data.message || "Lỗi gửi webhook sang Discord!"), true);
+        }
+      })
+      .catch(err => {
+        showToast("❌ Không thể kết nối tới server: " + (err.message || err), true);
+      });
+    }
+
+    // ================= DEATH SHORTENER HUB ADMIN =================
+    function fetchAdminShortenerLinks() {
+      if (!adminToken) return;
+      fetch("/api/admin/shortener/links", {
+        headers: { "X-Admin-Token": adminToken }
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "ok") {
+          renderShortenerLinks(data.links || []);
+        }
+      })
+      .catch(() => {});
+    }
+
+    function renderShortenerLinks(links) {
+      const tbody = document.getElementById("shortenerTableBody");
+      const countEl = document.getElementById("shortenerLinksCount");
+      if (countEl) countEl.innerText = links.length;
+      if (!tbody) return;
+
+      if (!links || links.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:16px; color:#64748b;">Chưa có link rút gọn nào. Hãy tạo link mới bên trên!</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = links.map(link => {
+        const fullShortUrl = `${window.location.origin}/s/${link.code}`;
+        const createdDate = link.created_at ? new Date(link.created_at * 1000).toLocaleString() : "--";
+        const shortDestDisplay = link.dest_url.length > 40 ? link.dest_url.substring(0, 37) + '...' : link.dest_url;
+
+        return `
+          <tr>
+            <td>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <a href="${fullShortUrl}" target="_blank" style="color:#06b6d4; font-weight:bold; font-family:monospace; text-decoration:none;">/s/${link.code}</a>
+                <button type="button" onclick="navigator.clipboard.writeText('${fullShortUrl}').then(() => showToast('📋 Đã copy: /s/${link.code}'))" class="btn btn-dark" style="padding:2px 6px; font-size:10px;">📋</button>
+              </div>
+            </td>
+            <td>
+              <span title="${link.dest_url}" style="font-family:monospace; font-size:11px; color:#94a3b8;">${shortDestDisplay}</span>
+            </td>
+            <td>
+              <span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b;">${link.duration || 15}s</span>
+            </td>
+            <td>
+              <span class="badge" style="background:rgba(6,182,212,0.15); color:#06b6d4; font-weight:bold;">${link.clicks || 0}</span>
+            </td>
+            <td style="font-size:11px; color:#64748b;">${createdDate}</td>
+            <td style="text-align:right;">
+              <button onclick="deleteAdminShortLink('${link.code}')" class="btn btn-red" style="padding:3px 8px; font-size:10px;">🗑️ Xóa</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function createAdminShortLink() {
+      const destUrl = document.getElementById("shortDestUrl").value.trim();
+      const alias = document.getElementById("shortAlias").value.trim();
+      const duration = parseInt(document.getElementById("shortDuration").value) || 15;
+
+      if (!destUrl) {
+        showToast("Vui lòng nhập đường dẫn đích!", true);
+        return;
+      }
+
+      fetch("/api/admin/shortener/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ dest_url: destUrl, alias: alias, duration: duration })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "ok") {
+          showToast(`⚡ Đã tạo link rút gọn: ${data.short_url}`);
+          document.getElementById("shortDestUrl").value = "";
+          document.getElementById("shortAlias").value = "";
+          fetchAdminShortenerLinks();
+        } else {
+          showToast(data.message || "Lỗi tạo link rút gọn", true);
+        }
+      })
+      .catch(() => showToast("Lỗi kết nối", true));
+    }
+
+    function deleteAdminShortLink(code) {
+      if (!confirm(`Xóa link rút gọn /s/${code}?`)) return;
+      fetch("/api/admin/shortener/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+        body: JSON.stringify({ code: code })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "ok") {
+          showToast("🗑️ Đã xóa link rút gọn");
+          fetchAdminShortenerLinks();
+        } else {
+          showToast(data.message || "Lỗi xóa link", true);
+        }
+      })
+      .catch(() => showToast("Lỗi kết nối", true));
+    }
+
+    // Khởi động tức thì
+    window.addEventListener('DOMContentLoaded', () => {
+      // 1. Khởi tạo biểu đồ an toàn
+      initCharts();
+
+      // 2. Fetch ngay lập tức snapshot stats để giao diện hiện số trong 0.01 giây
+      fetch('/api/stats')
+        .then(r => r.json())
+        .then(data => updateDashboard(data))
+        .catch(() => {});
+
+      // 3. Kết nối WebSocket
+      connectWebSocket();
+    });
+  </script>
+</body>
+</html>
