@@ -119,25 +119,20 @@ def verify_admin_token(token):
     return False
 
 def make_stateless_captcha():
-    """Sinh phép tính ngẫu nhiên & chữ ký HMAC để xác minh stateless chống bot."""
+    """Sinh phép tính ngẫu nhiên (Cộng hoặc Trừ dễ hiểu, kết quả luôn dương) & chữ ký HMAC chống bot."""
     ts = int(time.time())
     secret = get_admin_secret()
-    op = random.choice(["+", "-", "*"])
+    op = random.choice(["+", "-"])
     if op == "+":
-        a = random.randint(12, 50)
-        b = random.randint(8, 35)
+        a = random.randint(12, 49)
+        b = random.randint(11, 39)
         ans = a + b
         expr = f"{a} + {b}"
-    elif op == "-":
-        a = random.randint(25, 60)
-        b = random.randint(5, 20)
+    else:
+        a = random.randint(35, 75)
+        b = random.randint(10, 24)
         ans = a - b
         expr = f"{a} - {b}"
-    else:
-        a = random.randint(2, 9)
-        b = random.randint(3, 9)
-        ans = a * b
-        expr = f"{a} × {b}"
     
     sig = server.hmac.new(secret.encode("utf-8"), f"dcap_{ans}_{ts}".encode("utf-8"), server.hashlib.sha256).hexdigest()[:16]
     cid = f"dcap_{ts}_{sig}"
@@ -151,18 +146,36 @@ def make_stateless_captcha():
     return cid, expr, ans
 
 def verify_stateless_captcha(cid, user_ans):
-    """Xác thực phép tính captcha không cần bộ nhớ máy chủ (stateless HMAC)."""
+    """Xác thực phép tính captcha thông minh (hỗ trợ nhập số, khoảng trắng, dấu bằng, phép tính)."""
     if not cid or user_ans is None:
         return False
     cid = str(cid).strip()
-    user_ans = str(user_ans).strip()
-    if not cid or not user_ans:
+    raw_str = str(user_ans).strip().lstrip("=").lstrip("?").strip()
+    if not cid or not raw_str:
         return False
+
+    candidate_answers = [raw_str]
+    try:
+        clean_num = str(int(float(raw_str)))
+        if clean_num not in candidate_answers:
+            candidate_answers.append(clean_num)
+    except Exception:
+        pass
+
+    if any(c in raw_str for c in ["+", "-", "*"]):
+        try:
+            clean_expr = raw_str.replace("×", "*").replace(" ", "")
+            if re.match(r"^[\d\+\-\*]+$", clean_expr):
+                evaluated = str(eval(clean_expr))
+                if evaluated not in candidate_answers:
+                    candidate_answers.append(evaluated)
+        except Exception:
+            pass
 
     # 1. In-memory check (nếu cùng process hoặc local server.py)
     if hasattr(server, "captcha_sessions") and cid in server.captcha_sessions:
         expected = str(server.captcha_sessions[cid].get("answer", "")).strip()
-        if expected and expected == user_ans:
+        if expected and any(expected == cand for cand in candidate_answers):
             return True
 
     # 2. Stateless HMAC check
@@ -175,19 +188,22 @@ def verify_stateless_captcha(cid, user_ans):
                 # Cho phép giải trong vòng 15 phút (900s)
                 if abs(time.time() - ts) < 900:
                     secret = get_admin_secret()
-                    expected_sig = server.hmac.new(secret.encode("utf-8"), f"dcap_{user_ans}_{ts}".encode("utf-8"), server.hashlib.sha256).hexdigest()[:16]
-                    if server.hmac.compare_digest(sig, expected_sig):
-                        return True
+                    for cand in candidate_answers:
+                        expected_sig = server.hmac.new(secret.encode("utf-8"), f"dcap_{cand}_{ts}".encode("utf-8"), server.hashlib.sha256).hexdigest()[:16]
+                        if server.hmac.compare_digest(sig, expected_sig):
+                            return True
             except Exception:
                 pass
     return False
 
-def generate_stateless_getkey_token(ip="127.0.0.1", wait_time=90):
+def generate_stateless_getkey_token(ip="127.0.0.1", wait_time=90, discord_started_at=0, discord_verified=False, discord_user=""):
     """Sinh phiên GetKey mã hóa stateless kèm chữ ký HMAC (hoạt động đa máy chủ Vercel Serverless)."""
     ts = int(time.time())
     secret = get_admin_secret()
     nonce = server.secrets.token_hex(4)
-    raw = f"{ts}:{int(wait_time)}:{ip}:{nonce}"
+    disc_flag = 1 if discord_verified else 0
+    clean_user = discord_user.replace(":", "_")[:24]
+    raw = f"{ts}:{int(wait_time)}:{ip}:{int(discord_started_at)}:{disc_flag}:{clean_user}:{nonce}"
     data_b64 = base64.urlsafe_b64encode(raw.encode("utf-8")).decode("utf-8").rstrip("=")
     sig = server.hmac.new(secret.encode("utf-8"), f"dgk_{data_b64}".encode("utf-8"), server.hashlib.sha256).hexdigest()[:16]
     token = f"dgk_{data_b64}_{sig}"
@@ -196,7 +212,9 @@ def generate_stateless_getkey_token(ip="127.0.0.1", wait_time=90):
         "created_at": float(ts),
         "ip": ip,
         "required_wait": int(wait_time),
-        "discord_verified": True,
+        "discord_started_at": int(discord_started_at),
+        "discord_verified": bool(discord_verified),
+        "discord_user": clean_user,
         "pow_solved": True,
         "claimed_key": "",
         "used": False
@@ -234,13 +252,18 @@ def verify_and_decode_getkey_token(token):
                         ts = float(p[0])
                         wait_time = int(p[1])
                         ip = p[2]
+                        discord_started_at = int(p[3]) if len(p) > 3 else 0
+                        discord_verified = bool(int(p[4])) if len(p) > 4 else False
+                        discord_user = p[5] if len(p) > 5 else ""
                         # Token có hiệu lực tối đa 3 giờ (10800s)
                         if abs(time.time() - ts) < 10800:
                             sess = {
                                 "created_at": ts,
                                 "ip": ip,
                                 "required_wait": wait_time,
-                                "discord_verified": True,
+                                "discord_started_at": discord_started_at,
+                                "discord_verified": discord_verified,
+                                "discord_user": discord_user,
                                 "pow_solved": True,
                                 "claimed_key": "",
                                 "used": False
@@ -475,25 +498,60 @@ class handler(BaseHTTPRequestHandler):
             sess = verify_and_decode_getkey_token(token)
             if not sess:
                 return self.send_json({"status": "error", "message": "Phiên không hợp lệ hoặc đã hết hạn!"}, status=400)
-            elapsed = int(time.time() - sess["created_at"])
+            
+            disc_verified = sess.get("discord_verified", False)
+            disc_started_at = int(sess.get("discord_started_at", 0))
             wait_time = int(sess.get("required_wait", 90))
-            remaining = max(0, wait_time - elapsed)
-            if remaining <= 0 or sess.get("discord_verified", False):
+            disc_duration = 60
+
+            if disc_verified:
                 return self.send_json({
                     "status": "verified",
                     "verified": True,
-                    "elapsed": elapsed,
+                    "elapsed": disc_duration,
                     "remaining": 0,
-                    "required": wait_time,
+                    "required": disc_duration,
+                    "token": token,
                     "next_url": f"/getkey/middle?token={token}"
                 })
-            else:
+
+            if disc_started_at <= 0:
+                return self.send_json({
+                    "status": "waiting",
+                    "verified": False,
+                    "elapsed": 0,
+                    "remaining": disc_duration,
+                    "required": disc_duration,
+                    "message": "Vui lòng nhập Discord username để kích hoạt đối soát!"
+                })
+
+            disc_elapsed = int(time.time() - disc_started_at)
+            disc_remaining = max(0, disc_duration - disc_elapsed)
+
+            if disc_remaining > 0:
                 return self.send_json({
                     "status": "checking",
                     "verified": False,
-                    "elapsed": elapsed,
-                    "remaining": remaining,
-                    "required": wait_time
+                    "elapsed": disc_elapsed,
+                    "remaining": disc_remaining,
+                    "required": disc_duration
+                })
+            else:
+                verified_token = generate_stateless_getkey_token(
+                    ip=client_ip,
+                    wait_time=wait_time,
+                    discord_started_at=disc_started_at,
+                    discord_verified=True,
+                    discord_user=sess.get("discord_user", "")
+                )
+                return self.send_json({
+                    "status": "verified",
+                    "verified": True,
+                    "elapsed": disc_duration,
+                    "remaining": 0,
+                    "required": disc_duration,
+                    "token": verified_token,
+                    "next_url": f"/getkey/middle?token={verified_token}"
                 })
 
         if path in ("/api/getkey/middle-status", "/getkey/middle-status"):
@@ -505,6 +563,7 @@ class handler(BaseHTTPRequestHandler):
             wait_time = int(sess.get("required_wait", 90))
             remaining = max(0, wait_time - elapsed)
             is_wl = server.is_ip_whitelisted(client_ip) if hasattr(server, "is_ip_whitelisted") else False
+            is_disc_ok = bool(sess.get("discord_verified", False)) or is_wl
             return self.send_json({
                 "status": "ok",
                 "elapsed": elapsed,
@@ -512,8 +571,8 @@ class handler(BaseHTTPRequestHandler):
                 "remaining": remaining,
                 "required": wait_time,
                 "total_min": wait_time,
-                "can_redeem": (remaining <= 0 or is_wl),
-                "discord_verified": True,
+                "can_redeem": (remaining <= 0 and is_disc_ok),
+                "discord_verified": is_disc_ok,
                 "is_whitelisted": is_wl,
                 "pow_solved": sess.get("pow_solved", True),
                 "pow_challenge": sess.get("pow_challenge", "")
@@ -528,6 +587,14 @@ class handler(BaseHTTPRequestHandler):
             elapsed = int(time.time() - sess["created_at"])
             wait_time = int(sess.get("required_wait", 90))
             is_wl = server.is_ip_whitelisted(client_ip) if hasattr(server, "is_ip_whitelisted") else False
+            
+            if not sess.get("discord_verified", False) and not is_wl:
+                return self.send_json({
+                    "status": "blocked",
+                    "message": "Chưa hoàn thành xác thực Discord tại Link 2! Vui lòng không bypass.",
+                    "redirect": f"/getkey/shortener?token={token}"
+                }, status=403)
+
             if elapsed < wait_time and not is_wl:
                 strikes = 1
                 is_banned = False
@@ -758,13 +825,24 @@ class handler(BaseHTTPRequestHandler):
             sess = verify_and_decode_getkey_token(token)
             if not sess:
                 return self.send_json({"status": "error", "message": "Phiên không hợp lệ hoặc đã hết hạn!"}, status=400)
-            sess["discord_username"] = username
-            sess["discord_verified"] = True
+            
+            if not username or len(username) < 2:
+                return self.send_json({"status": "error", "message": "Vui lòng nhập Discord username hợp lệ (ít nhất 2 ký tự)!"}, status=400)
+
+            now_ts = int(time.time())
             wait_time = int(sess.get("required_wait", 90))
+            new_token = generate_stateless_getkey_token(
+                ip=client_ip,
+                wait_time=wait_time,
+                discord_started_at=now_ts,
+                discord_verified=False,
+                discord_user=username
+            )
             return self.send_json({
                 "status": "ok",
                 "message": "Đã bắt đầu đối soát Discord!",
-                "duration": wait_time
+                "duration": 60,
+                "token": new_token
             })
 
         if path in ("/api/control", "/control"):

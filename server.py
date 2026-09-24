@@ -14,6 +14,7 @@ import hmac
 import hashlib
 import string
 import secrets
+import base64
 from datetime import datetime, timedelta
 from collections import Counter, deque, defaultdict
 
@@ -507,23 +508,18 @@ async def shorten_link4m_url(destination_url: str, api_token: str) -> str:
     return ""
 
 def generate_math_captcha() -> tuple[str, str]:
-    """Sinh phép tính ngẫu nhiên (Cộng, Trừ, Nhân) chống bot tự động kèm chữ ký HMAC."""
-    op = secrets.choice(["+", "-", "*"])
+    """Sinh phép tính ngẫu nhiên (Cộng hoặc Trừ 2 chữ số) rõ ràng, tuyệt đối không gây nhầm lẫn."""
+    op = secrets.choice(["+", "-"])
     if op == "+":
         a = secrets.randbelow(40) + 12
-        b = secrets.randbelow(30) + 8
+        b = secrets.randbelow(35) + 7
         ans = a + b
         expr = f"{a} + {b}"
-    elif op == "-":
-        a = secrets.randbelow(40) + 25
-        b = secrets.randbelow(15) + 5
+    else:
+        a = secrets.randbelow(45) + 30
+        b = secrets.randbelow(20) + 5
         ans = a - b
         expr = f"{a} - {b}"
-    else:
-        a = secrets.randbelow(8) + 2
-        b = secrets.randbelow(8) + 3
-        ans = a * b
-        expr = f"{a} × {b}"
 
     now = time.time()
     ts = int(now)
@@ -543,18 +539,36 @@ def generate_math_captcha() -> tuple[str, str]:
     return cid, expr
 
 def verify_stateless_captcha(cid: str, user_ans: str | int) -> bool:
-    """Xác thực captcha bằng HMAC stateless hoặc in-memory."""
+    """Xác thực captcha bằng HMAC stateless hoặc in-memory với cơ chế chuẩn hóa đáp án siêu bền bỉ."""
     if not cid or user_ans is None:
         return False
     cid_str = str(cid).strip()
-    u_ans = str(user_ans).strip()
-    if not cid_str or not u_ans:
+    raw_str = str(user_ans).strip().lstrip("=").lstrip("?").strip()
+    if not cid_str or not raw_str:
         return False
+
+    candidate_answers = [raw_str]
+    try:
+        clean_num = str(int(float(raw_str)))
+        if clean_num not in candidate_answers:
+            candidate_answers.append(clean_num)
+    except Exception:
+        pass
+
+    if any(c in raw_str for c in ["+", "-", "*"]):
+        try:
+            clean_expr = raw_str.replace("×", "*").replace(" ", "")
+            if re.match(r"^[\d\+\-\*]+$", clean_expr):
+                evaluated = str(eval(clean_expr))
+                if evaluated not in candidate_answers:
+                    candidate_answers.append(evaluated)
+        except Exception:
+            pass
 
     # 1. In-memory check
     if cid_str in captcha_sessions:
         expected = str(captcha_sessions[cid_str].get("answer", "")).strip()
-        if expected and expected == u_ans:
+        if expected and any(expected == cand for cand in candidate_answers):
             return True
 
     # 2. Stateless HMAC check
@@ -566,12 +580,90 @@ def verify_stateless_captcha(cid: str, user_ans: str | int) -> bool:
                 ts = int(ts_str)
                 if abs(time.time() - ts) < 900:
                     salt = SECRET_SALT or keys_db.get("secret_salt", "DeathSuperSecretHMACSalt998877")
-                    expected_sig = hmac.new(salt.encode("utf-8"), f"dcap_{u_ans}_{ts}".encode("utf-8"), hashlib.sha256).hexdigest()[:16]
-                    if hmac.compare_digest(sig, expected_sig):
-                        return True
+                    for cand in candidate_answers:
+                        expected_sig = hmac.new(salt.encode("utf-8"), f"dcap_{cand}_{ts}".encode("utf-8"), hashlib.sha256).hexdigest()[:16]
+                        if hmac.compare_digest(sig, expected_sig):
+                            return True
             except Exception:
                 pass
     return False
+
+def generate_stateless_getkey_token(ip="127.0.0.1", wait_time=90, discord_started_at=0, discord_verified=False, discord_user=""):
+    """Sinh phiên GetKey mã hóa stateless kèm chữ ký HMAC (hoạt động đa máy chủ Vercel Serverless & Local)."""
+    ts = int(time.time())
+    salt = SECRET_SALT or keys_db.get("secret_salt", "DeathSuperSecretHMACSalt998877")
+    nonce = secrets.token_hex(4)
+    disc_flag = 1 if discord_verified else 0
+    clean_user = (discord_user or "").replace(":", "_")[:24]
+    raw = f"{ts}:{int(wait_time)}:{ip}:{int(discord_started_at)}:{disc_flag}:{clean_user}:{nonce}"
+    data_b64 = base64.urlsafe_b64encode(raw.encode("utf-8")).decode("utf-8").rstrip("=")
+    sig = hmac.new(salt.encode("utf-8"), f"dgk_{data_b64}".encode("utf-8"), hashlib.sha256).hexdigest()[:16]
+    token = f"dgk_{data_b64}_{sig}"
+    
+    sess = {
+        "created_at": float(ts),
+        "ip": ip,
+        "required_wait": int(wait_time),
+        "discord_started_at": int(discord_started_at),
+        "discord_verified": bool(discord_verified),
+        "discord_user": clean_user,
+        "pow_challenge": secrets.token_hex(6),
+        "pow_solved": True,
+        "claimed_key": "",
+        "used": False
+    }
+    getkey_tokens[token] = sess
+    ip_getkey_sessions[ip] = token
+    return token
+
+def verify_and_decode_getkey_token(token):
+    """Giải mã và xác minh tính toàn vẹn của phiên GetKey stateless / in-memory."""
+    if not token or not isinstance(token, str):
+        return None
+    token = token.strip()
+    
+    # 1. In-memory check
+    if token in getkey_tokens:
+        return getkey_tokens[token]
+        
+    # 2. Stateless HMAC check
+    if token.startswith("dgk_"):
+        parts = token.split("_")
+        if len(parts) == 3:
+            _, data_b64, sig = parts
+            try:
+                salt = SECRET_SALT or keys_db.get("secret_salt", "DeathSuperSecretHMACSalt998877")
+                expected_sig = hmac.new(salt.encode("utf-8"), f"dgk_{data_b64}".encode("utf-8"), hashlib.sha256).hexdigest()[:16]
+                if hmac.compare_digest(sig, expected_sig):
+                    pad = len(data_b64) % 4
+                    padded_b64 = data_b64 + ("=" * (4 - pad) if pad > 0 else "")
+                    raw = base64.urlsafe_b64decode(padded_b64.encode("utf-8")).decode("utf-8")
+                    p = raw.split(":")
+                    if len(p) >= 3:
+                        ts = float(p[0])
+                        wait_time = int(p[1])
+                        ip = p[2]
+                        discord_started_at = int(p[3]) if len(p) > 3 else 0
+                        discord_verified = bool(int(p[4])) if len(p) > 4 else False
+                        discord_user = p[5] if len(p) > 5 else ""
+                        if abs(time.time() - ts) < 10800:
+                            sess = {
+                                "created_at": ts,
+                                "ip": ip,
+                                "required_wait": wait_time,
+                                "discord_started_at": discord_started_at,
+                                "discord_verified": discord_verified,
+                                "discord_user": discord_user,
+                                "pow_challenge": secrets.token_hex(6),
+                                "pow_solved": True,
+                                "claimed_key": "",
+                                "used": False
+                            }
+                            getkey_tokens[token] = sess
+                            return sess
+            except Exception:
+                pass
+    return None
 
 def mask_ip(ip: str, port: int | str) -> str:
     """Che 2 octet giữa của IP (ví dụ: 103.152.***.***:1080) để bảo vệ công sức người scan."""
@@ -1584,7 +1676,7 @@ async def api_admin_shortener_delete(request):
     return web.json_response({"status": "error", "message": "Không tìm thấy mã rút gọn này!"}, status=404)
 
 async def api_shortener_discord_start(request):
-    """Khởi động tiến trình xác thực thành viên Discord trong Shortener (đốt 1 - 2 phút)."""
+    """Khởi động tiến trình xác thực thành viên Discord trong Shortener (đếm ngược 60s bắt buộc)."""
     try:
         body = await request.json()
     except Exception:
@@ -1597,18 +1689,28 @@ async def api_shortener_discord_start(request):
     if banned:
         return web.json_response({"status": "error", "message": f"IP của bạn đang bị khóa {ban_remaining}s do nghi vấn bypass!"}, status=403)
 
-    if not token or token not in getkey_tokens:
+    if not discord_user or len(discord_user) < 2:
+        return web.json_response({"status": "error", "message": "Vui lòng nhập Discord username hợp lệ (ít nhất 2 ký tự)!"}, status=400)
+
+    sess = verify_and_decode_getkey_token(token)
+    if not sess:
         return web.json_response({"status": "error", "message": "Phiên làm việc không tồn tại hoặc đã hết hạn!"}, status=404)
 
-    token_data = getkey_tokens[token]
-    token_data["discord_user"] = discord_user
-    token_data["discord_started_at"] = time.time()
-
     settings = get_server_settings()
-    duration = int(settings.get("discord_check_duration", 90)) # Mặc định 90s (1.5 phút)
+    duration = 60
+    now_ts = int(time.time())
+    new_token = generate_stateless_getkey_token(
+        ip=client_ip,
+        wait_time=int(sess.get("required_wait", 90)),
+        discord_started_at=now_ts,
+        discord_verified=False,
+        discord_user=discord_user
+    )
+
     return web.json_response({
         "status": "ok",
         "duration": duration,
+        "token": new_token,
         "invite": settings.get("required_discord_invite", "https://discord.gg/2zuwDpJaNP"),
         "server_name": settings.get("required_discord_server_name", "Death Silence Community")
     })
@@ -1617,53 +1719,84 @@ async def api_shortener_discord_status(request):
     """Kiểm tra trạng thái tiến trình đối soát thành viên Discord."""
     token = request.query.get("token", "").strip()
     client_ip = get_client_ip(request)
-    if not token or token not in getkey_tokens:
-        return web.json_response({"status": "error", "message": "Phiên không hợp lệ!"}, status=404)
+    sess = verify_and_decode_getkey_token(token)
+    if not sess:
+        return web.json_response({"status": "error", "message": "Phiên không hợp lệ hoặc đã hết hạn!"}, status=404)
 
-    token_data = getkey_tokens[token]
-    started = token_data.get("discord_started_at", 0)
-    settings = get_server_settings()
-    target_dur = int(settings.get("discord_check_duration", 90))
+    started = int(sess.get("discord_started_at", 0))
+    disc_verified = sess.get("discord_verified", False)
+    target_dur = 60
     now = time.time()
-    elapsed = now - started if started > 0 else 0
+    elapsed = int(now - started) if started > 0 else 0
 
-    if is_ip_whitelisted(client_ip) or (started > 0 and elapsed >= target_dur):
-        token_data["discord_verified"] = True
+    if disc_verified:
         return web.json_response({
             "status": "verified",
             "ready": True,
-            "elapsed": int(elapsed),
+            "verified": True,
+            "elapsed": target_dur,
             "target": target_dur,
+            "token": token,
             "next_url": f"/getkey/middle?token={token}"
+        })
+
+    if started <= 0:
+        return web.json_response({
+            "status": "waiting",
+            "ready": False,
+            "verified": False,
+            "elapsed": 0,
+            "target": target_dur,
+            "remaining": target_dur,
+            "message": "Vui lòng nhập Discord username để kích hoạt đối soát!"
+        })
+
+    if is_ip_whitelisted(client_ip) or elapsed >= target_dur:
+        verified_token = generate_stateless_getkey_token(
+            ip=client_ip,
+            wait_time=int(sess.get("required_wait", 90)),
+            discord_started_at=started,
+            discord_verified=True,
+            discord_user=sess.get("discord_user", "")
+        )
+        return web.json_response({
+            "status": "verified",
+            "ready": True,
+            "verified": True,
+            "elapsed": target_dur,
+            "target": target_dur,
+            "token": verified_token,
+            "next_url": f"/getkey/middle?token={verified_token}"
         })
 
     return web.json_response({
         "status": "checking",
         "ready": False,
-        "elapsed": int(elapsed),
+        "verified": False,
+        "elapsed": elapsed,
         "target": target_dur,
-        "remaining": max(0, int(target_dur - elapsed))
+        "remaining": max(0, target_dur - elapsed)
     })
 
 async def api_getkey_middle_status(request):
-    """Cung cấp đồng hồ đo tiến trình tổng thể 5 phút cho Link 3: Death-Middle-GetKey."""
+    """Cung cấp đồng hồ đo tiến trình tổng thể cho Link 3: Death-Middle-GetKey."""
     token = request.query.get("token", "").strip()
     client_ip = get_client_ip(request)
-    if not token or token not in getkey_tokens:
-        return web.json_response({"status": "error", "message": "Phiên không hợp lệ!"}, status=404)
+    sess = verify_and_decode_getkey_token(token)
+    if not sess:
+        return web.json_response({"status": "error", "message": "Phiên không hợp lệ hoặc đã hết hạn!"}, status=404)
 
-    token_data = getkey_tokens[token]
     now = time.time()
-    total_elapsed = int(now - token_data.get("created_at", now))
-    settings = get_server_settings()
-    total_min = int(settings.get("total_min_key_duration", 300))
+    total_elapsed = int(now - sess.get("created_at", now))
+    total_min = int(sess.get("required_wait", 90))
     whitelisted = is_ip_whitelisted(client_ip)
-    can_redeem = whitelisted or (total_elapsed >= total_min)
+    disc_ok = bool(sess.get("discord_verified", False)) or whitelisted
+    can_redeem = (whitelisted or (total_elapsed >= total_min)) and disc_ok
 
     return web.json_response({
         "status": "ok",
         "token": token,
-        "discord_verified": token_data.get("discord_verified", False),
+        "discord_verified": disc_ok,
         "total_elapsed": total_elapsed,
         "total_min": total_min,
         "remaining": max(0, total_min - total_elapsed),
@@ -1735,28 +1868,15 @@ async def api_getkey_start(request):
     if cid in captcha_sessions:
         del captcha_sessions[cid]
 
-    # Đã giải đúng Captcha -> Cấp token bảo mật 32-bytes
-    token = secrets.token_urlsafe(32)
-    now_ts = time.time()
-    pow_challenge = secrets.token_hex(6) # 12 hex chars
-
-    getkey_tokens[token] = {
-        "created_at": now_ts,
-        "ip": client_ip,
-        "user_agent": user_agent[:200],
-        "pow_challenge": pow_challenge,
-        "used": False,
-        "claimed_key": "",
-        "discord_user": "",
-        "discord_started_at": 0,
-        "discord_verified": False
-    }
-    ip_getkey_sessions[client_ip] = token
+    # Đã giải đúng Captcha -> Cấp token bảo mật stateless
+    wait_time = 90
+    token = generate_stateless_getkey_token(client_ip, wait_time=wait_time)
+    pow_challenge = secrets.token_hex(6)
 
     settings = get_server_settings()
     shortener_url = f"/getkey/shortener?token={token}"
     middle_url = f"/getkey/middle?token={token}"
-    short_code = create_death_short_link(middle_url, duration=int(settings.get("discord_check_duration", 90)))
+    short_code = create_death_short_link(middle_url, duration=wait_time)
 
     return web.json_response({
         "status": "ok",
@@ -1774,13 +1894,13 @@ async def api_getkey_start(request):
 async def api_getkey_my_session(request):
     client_ip = get_client_ip(request)
     token = request.query.get("token", "").strip() or ip_getkey_sessions.get(client_ip, "")
-    if token and token in getkey_tokens:
-        tok_data = getkey_tokens[token]
+    sess = verify_and_decode_getkey_token(token) if token else None
+    if sess:
         return web.json_response({
             "status": "ok",
             "token": token,
-            "created_at": tok_data["created_at"],
-            "elapsed": int(time.time() - tok_data["created_at"])
+            "created_at": sess["created_at"],
+            "elapsed": int(time.time() - sess["created_at"])
         })
     return web.json_response({"status": "no_session", "message": "Chưa có phiên lấy key cho IP này."}, status=404)
 
@@ -1805,13 +1925,14 @@ async def api_getkey_verify(request):
     if not token:
         token = ip_getkey_sessions.get(client_ip, "")
 
-    if not token or token not in getkey_tokens:
+    sess = verify_and_decode_getkey_token(token)
+    if not sess:
         return web.json_response({
             "status": "no_session",
             "message": "Không tìm thấy phiên vượt link cho thiết bị này! Vui lòng truy cập trang /getkey để giải Captcha và bắt đầu."
         }, status=404)
 
-    token_data = getkey_tokens[token]
+    token_data = sess
     settings = get_server_settings()
 
     # 2. Phát hiện Bot / Headless Scraper

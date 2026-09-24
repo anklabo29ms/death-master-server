@@ -312,7 +312,7 @@
     });
 
     function checkMiddleStatus() {
-      fetch(`/api/getkey/middle-status?token=${token}`)
+      fetch(`/api/getkey/middle-status?token=${encodeURIComponent(token)}&t=${Date.now()}`)
         .then(r => r.json())
         .then(data => {
           if (data.status === "ok") {

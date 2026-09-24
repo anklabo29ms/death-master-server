@@ -342,18 +342,13 @@
         return;
       }
 
-      // Tải cấu hình Discord invite từ server
-      fetch(`/api/getkey/middle-status?token=${token}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.is_whitelisted) {
-            appendLog("[WHITELIST] IP của bạn nằm trong danh sách miễn trừ kiểm tra!", true);
-          }
-          if (data.discord_verified) {
-            finishVerification(nextDestination || `/getkey/middle?token=${token}`);
-          }
-        })
-        .catch(() => {});
+      // Luôn hiển thị Form nhập Discord username, bắt buộc người dùng nhập thật mới cho đếm ngược!
+      document.getElementById("discordFormCard").style.display = "block";
+      document.getElementById("timerCard").style.display = "none";
+      const btnProc = document.getElementById("btnProceed");
+      if (btnProc) {
+        btnProc.disabled = true;
+      }
     });
 
     function setupGeneralShortener(data) {
@@ -410,8 +405,8 @@
 
     function startDiscordVerification() {
       const u = document.getElementById("discordUserInput").value.trim();
-      if (!u) {
-        alert("Vui lòng nhập Discord Username của bạn trước khi xác thực!");
+      if (!u || u.length < 2) {
+        alert("Vui lòng nhập Discord Username của bạn trước khi xác thực (tối thiểu 2 ký tự)!");
         document.getElementById("discordUserInput").focus();
         return;
       }
@@ -423,12 +418,15 @@
       fetch("/api/shortener/discord-start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: token, discord_user: u })
+        body: JSON.stringify({ token: token, discord_user: u, username: u })
       })
       .then(async r => {
         const data = await r.json();
         if (r.ok && data.status === "ok") {
-          targetSeconds = data.duration || 90;
+          if (data.token) {
+            token = data.token;
+          }
+          targetSeconds = data.duration || 60;
           document.getElementById("discordFormCard").style.display = "none";
           document.getElementById("timerCard").style.display = "block";
           
@@ -439,12 +437,13 @@
         } else {
           alert(data.message || "Lỗi khởi động xác thực!");
           btn.disabled = false;
-          btn.innerText = "⚡ Bắt Đầu Xác Thực Thành Viên (1 - 2 Phút)";
+          btn.innerText = "⚡ Bắt Đầu Xác Thực Thành Viên (1 Phút)";
         }
       })
       .catch(() => {
         alert("Lỗi kết nối máy chủ xác thực!");
         btn.disabled = false;
+        btn.innerText = "⚡ Bắt Đầu Xác Thực Thành Viên (1 Phút)";
       });
     }
 
@@ -460,11 +459,14 @@
       let logIndex = 0;
 
       pollInterval = setInterval(() => {
-        fetch(`/api/shortener/discord-status?token=${token}`)
+        fetch(`/api/shortener/discord-status?token=${encodeURIComponent(token)}&t=${Date.now()}`)
           .then(r => r.json())
           .then(data => {
             if (data.status === "verified") {
               clearInterval(pollInterval);
+              if (data.token) {
+                token = data.token;
+              }
               finishVerification(data.next_url);
             } else if (data.status === "checking") {
               const remaining = data.remaining;
@@ -479,8 +481,11 @@
                 appendLog(logs[logIndex % logs.length]);
                 logIndex++;
               }
+            } else if (data.status === "waiting") {
+              // Chưa bắt đầu
             } else {
-              alert(data.message || "Phiên không hợp lệ!");
+              clearInterval(pollInterval);
+              alert(data.message || "Phiên không hợp lệ! Vui lòng thực hiện lại từ Link 1.");
               window.location.href = "/getkey";
             }
           })

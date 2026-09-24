@@ -238,14 +238,14 @@
       
       <div class="math-problem">
         <span id="mathExpr">Đang tải...</span>
-        <button class="btn-refresh" onclick="loadCaptcha()" title="Đổi phép tính khác">🔄</button>
+        <button type="button" class="btn-refresh" onclick="loadCaptcha()" title="Đổi phép tính khác">🔄</button>
       </div>
 
       <input type="hidden" id="captchaCid" value="" />
-      <input type="number" id="captchaAnswer" class="input-captcha" placeholder="Nhập đáp án..." autofocus onkeydown="if(event.key==='Enter') submitCaptcha();" />
+      <input type="text" inputmode="numeric" pattern="[0-9]*" id="captchaAnswer" class="input-captcha" placeholder="Nhập đáp án số..." autofocus onkeydown="if(event.key==='Enter') submitCaptcha();" autocomplete="off" />
 
-      <button id="btnProceed" onclick="submitCaptcha()" class="btn-submit">
-        <span>🚀 Xác Minh & Bắt Đầu Vượt Link</span>
+      <button type="button" id="btnProceed" onclick="submitCaptcha()" class="btn-submit" disabled>
+        <span>⏳ Đang tải Captcha...</span>
       </button>
     </div>
 
@@ -257,6 +257,8 @@
 
   <script>
     let currentToken = "";
+    let currentCid = "";
+    let isSubmitting = false;
     let minBypassSeconds = 60;
     let simStartTime = 0;
     let simTimerInterval = null;
@@ -272,15 +274,23 @@
     }
 
     function loadCaptcha() {
-      fetch("/api/getkey/captcha")
+      const btn = document.getElementById("btnProceed");
+      btn.disabled = true;
+      btn.innerText = "⏳ Đang tải Captcha...";
+      document.getElementById("mathExpr").innerText = "Đang tải...";
+
+      fetch("/api/getkey/captcha?t=" + Date.now())
         .then(r => r.json())
         .then(data => {
           if (data.status === "ok") {
             const expr = data.challenge || data.expr || "";
             document.getElementById("mathExpr").innerText = expr + " = ?";
-            document.getElementById("captchaCid").value = data.cid || data.captcha_id || "";
+            currentCid = data.cid || data.captcha_id || "";
+            document.getElementById("captchaCid").value = currentCid;
             document.getElementById("captchaAnswer").value = "";
             document.getElementById("captchaAnswer").focus();
+            btn.disabled = false;
+            btn.innerText = "🚀 Xác Minh & Bắt Đầu Vượt Link";
             if (data.client_ip) {
               const el = document.getElementById("clientIpBadge");
               if (el) el.innerText = data.client_ip;
@@ -295,16 +305,29 @@
             }
           } else {
             showError(data.message || "Lỗi tải Captcha! Vui lòng thử lại sau.");
+            btn.disabled = false;
+            btn.innerText = "🔄 Tải Lại Captcha";
           }
         })
-        .catch(() => showError("Lỗi tải Captcha! Vui lòng làm mới trang."));
+        .catch(() => {
+          showError("Lỗi tải Captcha! Vui lòng làm mới trang.");
+          btn.disabled = false;
+          btn.innerText = "🔄 Tải Lại Captcha";
+        });
     }
 
     function submitCaptcha(callbackSuccess = null) {
+      if (isSubmitting) return;
       hideError();
-      const cid = document.getElementById("captchaCid").value;
+      const cid = currentCid || document.getElementById("captchaCid").value;
       const ans = document.getElementById("captchaAnswer").value.trim();
       const btn = document.getElementById("btnProceed");
+
+      if (!cid) {
+        showError("Captcha chưa được tải xong! Vui lòng chờ vài giây hoặc bấm tải lại.");
+        loadCaptcha();
+        return;
+      }
 
       if (!ans) {
         showError("Vui lòng nhập kết quả phép tính Captcha!");
@@ -312,6 +335,7 @@
         return;
       }
 
+      isSubmitting = true;
       btn.disabled = true;
       btn.innerText = "⏳ Đang xác minh...";
 
@@ -332,14 +356,17 @@
             window.location.href = dest;
           }
         } else {
-          showError(data.message || "Đáp án Captcha sai! Vui lòng thử lại.");
+          showError(data.message || "Đáp án phép tính chưa đúng! Vui lòng thử lại.");
           loadCaptcha();
         }
       })
-      .catch(() => showError("Lỗi kết nối máy chủ!"))
-      .finally(() => {
+      .catch(() => {
+        showError("Lỗi kết nối máy chủ! Vui lòng kiểm tra lại mạng.");
         btn.disabled = false;
         btn.innerText = "🚀 Xác Minh & Bắt Đầu Vượt Link";
+      })
+      .finally(() => {
+        isSubmitting = false;
       });
     }
 
