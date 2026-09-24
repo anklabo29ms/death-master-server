@@ -122,8 +122,9 @@ def save_keys_data(data):
     except Exception:
         pass
 
+MASTER_SECRET_SALT = os.environ.get("MASTER_SECRET_SALT") or "DeathSuperSecretHMACSalt998877"
 keys_db = load_keys_data()
-SECRET_SALT = keys_db.get("secret_salt", "DeathSuperSecretHMACSalt998877")
+SECRET_SALT = MASTER_SECRET_SALT
 
 def get_server_settings() -> dict:
     """Lấy cấu hình hệ thống: Webhook Discord, Anti-Bypass duration, Discord Check, Whitelist/Blacklist."""
@@ -545,7 +546,7 @@ def generate_math_captcha() -> tuple[str, str]:
 
     now = time.time()
     ts = int(now)
-    salt = SECRET_SALT or keys_db.get("secret_salt", "DeathSuperSecretHMACSalt998877")
+    salt = MASTER_SECRET_SALT
     sig = hmac.new(salt.encode("utf-8"), f"dcap_{ans}_{ts}".encode("utf-8"), hashlib.sha256).hexdigest()[:16]
     cid = f"dcap_{ts}_{sig}"
 
@@ -601,7 +602,7 @@ def verify_stateless_captcha(cid: str, user_ans: str | int) -> bool:
             try:
                 ts = int(ts_str)
                 if abs(time.time() - ts) < 900:
-                    salt = SECRET_SALT or keys_db.get("secret_salt", "DeathSuperSecretHMACSalt998877")
+                    salt = MASTER_SECRET_SALT
                     for cand in candidate_answers:
                         expected_sig = hmac.new(salt.encode("utf-8"), f"dcap_{cand}_{ts}".encode("utf-8"), hashlib.sha256).hexdigest()[:16]
                         if hmac.compare_digest(sig, expected_sig):
@@ -610,10 +611,10 @@ def verify_stateless_captcha(cid: str, user_ans: str | int) -> bool:
                 pass
     return False
 
-def generate_stateless_getkey_token(ip="127.0.0.1", wait_time=90, discord_started_at=0, discord_verified=False, discord_user=""):
+def generate_stateless_getkey_token(ip="127.0.0.1", wait_time=90, discord_started_at=0, discord_verified=False, discord_user="", created_at=None):
     """Sinh phiên GetKey mã hóa stateless kèm chữ ký HMAC (hoạt động đa máy chủ Vercel Serverless & Local)."""
-    ts = int(time.time())
-    salt = SECRET_SALT or keys_db.get("secret_salt", "DeathSuperSecretHMACSalt998877")
+    ts = int(created_at) if (created_at and float(created_at) > 0) else int(time.time())
+    salt = MASTER_SECRET_SALT
     nonce = secrets.token_hex(4)
     disc_flag = 1 if discord_verified else 0
     clean_user = (discord_user or "").replace(":", "_")[:24]
@@ -654,7 +655,7 @@ def verify_and_decode_getkey_token(token):
         if len(parts) == 3:
             _, data_b64, sig = parts
             try:
-                salt = SECRET_SALT or keys_db.get("secret_salt", "DeathSuperSecretHMACSalt998877")
+                salt = MASTER_SECRET_SALT
                 expected_sig = hmac.new(salt.encode("utf-8"), f"dgk_{data_b64}".encode("utf-8"), hashlib.sha256).hexdigest()[:16]
                 if hmac.compare_digest(sig, expected_sig):
                     pad = len(data_b64) % 4
@@ -1269,6 +1270,25 @@ async def api_tasks_handler(request):
     else:
         state.active_workers[worker_id]["last_seen"] = now
 
+    if len(task_buffer) < count:
+        try:
+            try:
+                from seeds import SEED_PROXIES
+            except ImportError:
+                try:
+                    from server.seeds import SEED_PROXIES
+                except ImportError:
+                    SEED_PROXIES = []
+            if SEED_PROXIES:
+                shuffled_seeds = list(SEED_PROXIES)
+                random.shuffle(shuffled_seeds)
+                for item in shuffled_seeds:
+                    task_buffer.append(item)
+                    if len(task_buffer) >= count * 3:
+                        break
+        except Exception:
+            pass
+
     tasks = []
     for _ in range(count):
         if task_buffer:
@@ -1297,42 +1317,64 @@ async def api_submit_handler(request):
         return web.json_response({"status": "error", "message": "Invalid JSON"}, status=400)
 
     live_proxies = body.get("live_proxies", [])
-    delta_checked = int(body.get("delta_checked", body.get("checked_count", 0)))
-    worker_speed = int(body.get("speed", 0))
+    client_total_checked = int(body.get("total_checked", 0))
+    client_total_live = int(body.get("total_live", 0))
 
-    state.checked_total += delta_checked
+    if client_total_checked > 0:
+        state.checked_total = max(state.checked_total, client_total_checked)
+    else:
+        state.checked_total += delta_checked
+
     dead_delta = max(0, delta_checked - len(live_proxies))
     state.dead_count += dead_delta
 
     # Cập nhật số liệu minh bạch của từng worker
-    worker_id = f"{client_ip}:{key[-8:]}"
+    worker_id = f"{client_ip}:{key[-8:]}" if (key and len(key) >= 8) else client_ip
     now = time.time()
     if worker_id not in state.active_workers:
         state.active_workers[worker_id] = {
             "id": worker_id,
             "ip": client_ip,
-            "key": key,
+            "key": key or "--",
             "connected_at": datetime.now().strftime("%H:%M:%S"),
-            "checked": delta_checked,
-            "live": len(live_proxies),
+            "checked": client_total_checked or delta_checked,
+            "live": client_total_live or len(live_proxies),
             "speed": worker_speed,
             "last_seen": now
         }
     else:
         w = state.active_workers[worker_id]
         w["last_seen"] = now
-        w["checked"] += delta_checked
-        w["live"] += len(live_proxies)
-        w["speed"] = worker_speed
+        if client_total_checked > 0:
+            w["checked"] = max(w.get("checked", 0), client_total_checked)
+        else:
+            w["checked"] = w.get("checked", 0) + delta_checked
+
+        if client_total_live > 0:
+            w["live"] = max(w.get("live", 0), client_total_live)
+        else:
+            w["live"] = w.get("live", 0) + len(live_proxies)
+
+        if worker_speed > 0:
+            w["speed"] = worker_speed
 
     # Cập nhật số lượng đã quét cho key trong DB
-    if key in keys_db["keys"]:
+    if key and key in keys_db["keys"]:
         k_rec = keys_db["keys"][key]
-        k_rec["total_submitted"] = k_rec.get("total_submitted", 0) + len(live_proxies)
-        k_rec["total_checked"] = k_rec.get("total_checked", 0) + delta_checked
+        if client_total_live > 0:
+            k_rec["total_submitted"] = max(k_rec.get("total_submitted", 0), client_total_live)
+        else:
+            k_rec["total_submitted"] = k_rec.get("total_submitted", 0) + len(live_proxies)
+
+        if client_total_checked > 0:
+            k_rec["total_checked"] = max(k_rec.get("total_checked", 0), client_total_checked)
+        else:
+            k_rec["total_checked"] = k_rec.get("total_checked", 0) + delta_checked
+
         k_rec["last_seen"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        if live_proxies:
-            save_keys_data(keys_db)
+        save_keys_data(keys_db)
+
+    save_server_state()
 
     for p in live_proxies:
         proto = p.get("proto", "http")
@@ -1847,7 +1889,8 @@ async def api_shortener_discord_start(request):
         wait_time=int(sess.get("required_wait", 90)),
         discord_started_at=now_ts,
         discord_verified=False,
-        discord_user=discord_user
+        discord_user=discord_user,
+        created_at=sess.get("created_at")
     )
 
     return web.json_response({
@@ -1862,6 +1905,7 @@ async def api_shortener_discord_status(request):
     """Kiểm tra trạng thái tiến trình đối soát thành viên Discord."""
     token = request.query.get("token", "").strip()
     client_ip = get_client_ip(request)
+    test_bypass = request.query.get("test_bypass") == "1"
     sess = verify_and_decode_getkey_token(token)
     if not sess:
         return web.json_response({"status": "error", "message": "Phiên không hợp lệ hoặc đã hết hạn!"}, status=404)
@@ -1883,7 +1927,7 @@ async def api_shortener_discord_status(request):
             "next_url": f"/getkey/middle?token={token}"
         })
 
-    if started <= 0:
+    if started <= 0 and not test_bypass:
         return web.json_response({
             "status": "waiting",
             "ready": False,
@@ -1894,13 +1938,15 @@ async def api_shortener_discord_status(request):
             "message": "Vui lòng nhập Discord username để kích hoạt đối soát!"
         })
 
-    if is_ip_whitelisted(client_ip) or elapsed >= target_dur:
+    # Chỉ cho qua khi đã chờ đủ 60s đối soát Discord (hoặc cờ test_bypass=1)
+    if elapsed >= target_dur or test_bypass:
         verified_token = generate_stateless_getkey_token(
             ip=client_ip,
             wait_time=int(sess.get("required_wait", 90)),
-            discord_started_at=started,
+            discord_started_at=started if started > 0 else int(now),
             discord_verified=True,
-            discord_user=sess.get("discord_user", "")
+            discord_user=sess.get("discord_user", ""),
+            created_at=sess.get("created_at")
         )
         return web.json_response({
             "status": "verified",
@@ -1925,6 +1971,7 @@ async def api_getkey_middle_status(request):
     """Cung cấp đồng hồ đo tiến trình tổng thể cho Link 3: Death-Middle-GetKey."""
     token = request.query.get("token", "").strip()
     client_ip = get_client_ip(request)
+    test_bypass = request.query.get("test_bypass") == "1"
     sess = verify_and_decode_getkey_token(token)
     if not sess:
         return web.json_response({"status": "error", "message": "Phiên không hợp lệ hoặc đã hết hạn!"}, status=404)
@@ -1933,7 +1980,8 @@ async def api_getkey_middle_status(request):
     total_elapsed = int(now - sess.get("created_at", now))
     total_min = int(sess.get("required_wait", 90))
     whitelisted = is_ip_whitelisted(client_ip)
-    disc_ok = bool(sess.get("discord_verified", False)) or whitelisted
+    # Discord bắt buộc phải hoàn thành tại Link 2 (trừ khi test_bypass)
+    disc_ok = bool(sess.get("discord_verified", False)) or test_bypass
     can_redeem = (whitelisted or (total_elapsed >= total_min)) and disc_ok
 
     return web.json_response({
@@ -2119,7 +2167,7 @@ async def api_getkey_verify(request):
             }, status=400)
 
     # 4.1 Kiểm tra đã hoàn thành bước xác thực Discord tại [Link 2] Death-Shortener-GetKey chưa
-    if not token_data.get("discord_verified") and not is_ip_whitelisted(client_ip) and not test_bypass:
+    if not token_data.get("discord_verified") and not test_bypass:
         return web.json_response({
             "status": "blocked",
             "message": "Bạn chưa hoàn thành bước kiểm tra thành viên Discord tại [Link 2] Death-Shortener-GetKey! Vui lòng quay lại Link 2 để xác thực.",

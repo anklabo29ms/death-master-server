@@ -273,20 +273,80 @@
     let pollTimer = null;
     let totalRequired = 300;
 
-    // Browser Proof-of-Work: Tính toán hàm băm SHA-256 chống bot
+    // Pure-JS SHA-256 fallback cho các trình duyệt hoặc môi trường Non-HTTPS không có window.crypto.subtle
+    function sha256_pure(ascii) {
+      function rightRotate(value, amount) { return (value >>> amount) | (value << (32 - amount)); }
+      var mathPow = Math.pow, maxWord = mathPow(2, 32), lengthProperty = 'length', i, j, words = [];
+      var asciiBitLength = ascii[lengthProperty] * 8, hash = [], k = [], primeCounter = 0, isComposite = {};
+      for (var candidate = 2; primeCounter < 64; candidate++) {
+        if (!isComposite[candidate]) {
+          for (i = 0; i < 313; i += candidate) { isComposite[i] = candidate; }
+          hash[primeCounter] = (mathPow(candidate, .5) * maxWord) | 0;
+          k[primeCounter++] = (mathPow(candidate, 1/3) * maxWord) | 0;
+        }
+      }
+      ascii += '\x80';
+      while (ascii[lengthProperty] % 64 - 56) ascii += '\x00';
+      for (i = 0; i < ascii[lengthProperty]; i++) {
+        j = ascii.charCodeAt(i);
+        if (j >> 8) return [0, 0];
+        words[i >> 2] |= j << ((3 - i) % 4) * 8;
+      }
+      words[words[lengthProperty]] = ((asciiBitLength / maxWord) | 0);
+      words[words[lengthProperty]] = (asciiBitLength);
+      for (j = 0; j < words[lengthProperty];) {
+        var w = words.slice(j, j += 16), oldHash = hash;
+        hash = hash.slice(0, 8);
+        for (i = 0; i < 64; i++) {
+          var w15 = w[i - 15], w2 = w[i - 2];
+          var a = hash[0], e = hash[4];
+          var temp1 = hash[7]
+            + (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25))
+            + ((e & hash[5]) ^ ((~e) & hash[6]))
+            + k[i]
+            + (w[i] = (i < 16) ? w[i] : (
+                w[i - 16]
+                + (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3))
+                + w[i - 7]
+                + (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))
+              ) | 0
+            );
+          var temp2 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22))
+            + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+          hash = [(temp1 + temp2) | 0].concat(hash);
+          hash[4] = (hash[4] + temp1) | 0;
+        }
+        for (i = 0; i < 8; i++) { hash[i] = (hash[i] + oldHash[i]) | 0; }
+      }
+      return hash;
+    }
+
+    // Browser Proof-of-Work: Tính toán hàm băm SHA-256 chống bot (Hỗ trợ cả SubtleCrypto và Pure-JS)
     async function solvePoW(token) {
-      if (!window.crypto || !window.crypto.subtle) return 0;
-      const enc = new TextEncoder();
+      if (window.crypto && window.crypto.subtle) {
+        try {
+          const enc = new TextEncoder();
+          let nonce = 0;
+          while (nonce < 60000) {
+            const buf = await crypto.subtle.digest("SHA-256", enc.encode(`${token}:pow:${nonce}`));
+            const arr = new Uint8Array(buf);
+            if (arr[0] === 0 && (arr[1] & 0xF0) === 0) {
+              return nonce;
+            }
+            nonce++;
+          }
+        } catch (e) {}
+      }
+      // Pure-JS Fallback
       let nonce = 0;
       while (nonce < 60000) {
-        const buf = await crypto.subtle.digest("SHA-256", enc.encode(`${token}:pow:${nonce}`));
-        const arr = new Uint8Array(buf);
-        if (arr[0] === 0 && (arr[1] & 0xF0) === 0) {
+        const h = sha256_pure(`${token}:pow:${nonce}`);
+        if ((h[0] >>> 20) === 0) {
           return nonce;
         }
         nonce++;
       }
-      return 0;
+      return 1;
     }
 
     window.addEventListener("DOMContentLoaded", async () => {
@@ -316,8 +376,8 @@
         .then(r => r.json())
         .then(data => {
           if (data.status === "ok") {
-            // Kiểm tra Discord check
-            if (!data.discord_verified && !data.is_whitelisted) {
+            // Kiểm tra Discord check: Bắt buộc hoàn thành tại Link 2
+            if (!data.discord_verified) {
               clearInterval(pollTimer);
               alert("Bạn chưa hoàn thành bước kiểm tra thành viên Discord tại [Link 2] Death-Shortener-GetKey!");
               window.location.href = `/getkey/shortener?token=${token}`;
@@ -336,7 +396,7 @@
             const pct = Math.min(100, Math.round((elapsed / totalRequired) * 100));
             document.getElementById("progressFill").style.width = pct + "%";
 
-            if (data.can_redeem || remaining <= 0) {
+            if (data.can_redeem) {
               clearInterval(pollTimer);
               readyToRedeem();
             } else {

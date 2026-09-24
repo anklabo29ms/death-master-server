@@ -13,7 +13,24 @@ SERVER_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if SERVER_DIR not in sys.path:
     sys.path.insert(0, SERVER_DIR)
 
-import server
+if "server" in sys.modules and hasattr(sys.modules["server"], "task_buffer"):
+    server = sys.modules["server"]
+else:
+    import importlib.util
+    server_file = os.path.join(SERVER_DIR, "server.py")
+    if not os.path.exists(server_file):
+        server_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "server.py")
+
+    try:
+        if os.path.exists(server_file):
+            spec = importlib.util.spec_from_file_location("server", server_file)
+            server = importlib.util.module_from_spec(spec)
+            sys.modules["server"] = server
+            spec.loader.exec_module(server)
+        else:
+            import server
+    except Exception:
+        import server
 
 def normalize_req_path(raw):
     """Chuẩn hóa đường dẫn sạch sẽ, loại bỏ double-slashes và netloc anomalies."""
@@ -71,10 +88,10 @@ def get_req_client_ip(headers, client_address=None):
         return client_address[0]
     return "127.0.0.1"
 
+MASTER_SECRET_SALT = os.environ.get("MASTER_SECRET_SALT") or "DeathSuperSecretHMACSalt998877"
+
 def get_admin_secret():
-    if hasattr(server, "SECRET_SALT") and server.SECRET_SALT:
-        return str(server.SECRET_SALT)
-    return server.keys_db.get("secret_salt", "DeathSuperSecretHMACSalt998877")
+    return MASTER_SECRET_SALT
 
 def generate_stateless_admin_token():
     ts = int(time.time())
@@ -196,9 +213,9 @@ def verify_stateless_captcha(cid, user_ans):
                 pass
     return False
 
-def generate_stateless_getkey_token(ip="127.0.0.1", wait_time=90, discord_started_at=0, discord_verified=False, discord_user=""):
+def generate_stateless_getkey_token(ip="127.0.0.1", wait_time=90, discord_started_at=0, discord_verified=False, discord_user="", created_at=None):
     """Sinh phiên GetKey mã hóa stateless kèm chữ ký HMAC (hoạt động đa máy chủ Vercel Serverless)."""
-    ts = int(time.time())
+    ts = int(created_at) if (created_at and float(created_at) > 0) else int(time.time())
     secret = get_admin_secret()
     nonce = server.secrets.token_hex(4)
     disc_flag = 1 if discord_verified else 0
@@ -292,18 +309,44 @@ def serverless_harvest_tasks(needed=400):
     """Cào nhanh proxy trực tiếp cho Vercel Serverless khi kho task rỗng."""
     if len(server.task_buffer) >= needed:
         return
+
+    # 1. Nạp tức thì từ kho SEED_PROXIES đóng gói sẵn trong 0ms (Chống nghẽn / timeout trên Vercel)
+    try:
+        try:
+            from server.seeds import SEED_PROXIES
+        except ImportError:
+            try:
+                from seeds import SEED_PROXIES
+            except ImportError:
+                SEED_PROXIES = []
+        if SEED_PROXIES:
+            shuffled = list(SEED_PROXIES)
+            random.shuffle(shuffled)
+            for item in shuffled:
+                server.task_buffer.append(item)
+                if len(server.task_buffer) >= max(needed * 2, 1200):
+                    break
+    except Exception:
+        pass
+
+    if len(server.task_buffer) >= needed:
+        if hasattr(server.state, "queue_size"):
+            server.state.queue_size = len(server.task_buffer)
+        return
+
+    # 2. Nếu vẫn thiếu thì cào nhẹ thêm từ các nguồn nhanh
     candidates = list(FAST_HARVEST_SOURCES)
     random.shuffle(candidates)
     added = 0
     if not hasattr(server, "seen_proxies"):
         server.seen_proxies = set()
     
-    for url, proto in candidates:
+    for url, proto in candidates[:3]:
         if len(server.task_buffer) >= max(needed * 2, 1200):
             break
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=3.0) as r:
+            with urllib.request.urlopen(req, timeout=1.8) as r:
                 text = r.read().decode("utf-8", errors="ignore")
                 matches = re.findall(r"(\b(?:\d{1,3}\.){3}\d{1,3}\b)[:\s\t]+(\d{2,5})\b", text)
                 for ip, port in matches:
@@ -414,7 +457,12 @@ class handler(BaseHTTPRequestHandler):
         if "__orig_path" in query:
             raw_orig = query["__orig_path"][0]
             if raw_orig:
-                path = normalize_req_path(raw_orig)
+                parsed_orig = urllib.parse.urlparse(raw_orig)
+                path = normalize_req_path(parsed_orig.path)
+                if parsed_orig.query:
+                    orig_qs = urllib.parse.parse_qs(parsed_orig.query)
+                    for k, v in orig_qs.items():
+                        query[k] = v
 
         # 2. Kiểm tra các header của Vercel / Edge Router nếu path đang là file handler
         if path in ("/", "/api/index.py", "/api/index", "/api"):
@@ -611,7 +659,8 @@ class handler(BaseHTTPRequestHandler):
                     wait_time=wait_time,
                     discord_started_at=disc_started_at,
                     discord_verified=True,
-                    discord_user=sess.get("discord_user", "")
+                    discord_user=sess.get("discord_user", ""),
+                    created_at=sess.get("created_at")
                 )
                 return self.send_json({
                     "status": "verified",
@@ -631,8 +680,9 @@ class handler(BaseHTTPRequestHandler):
             elapsed = int(time.time() - sess["created_at"])
             wait_time = int(sess.get("required_wait", 90))
             remaining = max(0, wait_time - elapsed)
+            test_bypass = query.get("test_bypass", ["0"])[0] == "1"
             is_wl = server.is_ip_whitelisted(client_ip) if hasattr(server, "is_ip_whitelisted") else False
-            is_disc_ok = bool(sess.get("discord_verified", False)) or is_wl
+            is_disc_ok = bool(sess.get("discord_verified", False)) or test_bypass
             return self.send_json({
                 "status": "ok",
                 "elapsed": elapsed,
@@ -640,7 +690,7 @@ class handler(BaseHTTPRequestHandler):
                 "remaining": remaining,
                 "required": wait_time,
                 "total_min": wait_time,
-                "can_redeem": (remaining <= 0 and is_disc_ok),
+                "can_redeem": (is_disc_ok and (remaining <= 0 or is_wl)),
                 "discord_verified": is_disc_ok,
                 "is_whitelisted": is_wl,
                 "pow_solved": sess.get("pow_solved", True),
@@ -655,9 +705,10 @@ class handler(BaseHTTPRequestHandler):
             
             elapsed = int(time.time() - sess["created_at"])
             wait_time = int(sess.get("required_wait", 90))
+            test_bypass = query.get("test_bypass", ["0"])[0] == "1"
             is_wl = server.is_ip_whitelisted(client_ip) if hasattr(server, "is_ip_whitelisted") else False
             
-            if not sess.get("discord_verified", False) and not is_wl:
+            if not sess.get("discord_verified", False) and not test_bypass:
                 return self.send_json({
                     "status": "blocked",
                     "message": "Chưa hoàn thành xác thực Discord tại Link 2! Vui lòng không bypass.",
@@ -863,14 +914,19 @@ class handler(BaseHTTPRequestHandler):
 
             live_proxies = body.get("live_proxies", [])
             delta_checked = int(body.get("delta_checked", body.get("checked_count", 0)))
+            client_total_checked = int(body.get("total_checked", 0))
+            client_total_live = int(body.get("total_live", 0))
             worker_speed = int(body.get("speed", 0))
 
-            if delta_checked > 0:
+            if client_total_checked > 0:
+                server.state.checked_total = max(server.state.checked_total, client_total_checked)
+            else:
                 server.state.checked_total += delta_checked
-                server.state.dead_count += max(0, delta_checked - len(live_proxies))
+
+            server.state.dead_count += max(0, delta_checked - len(live_proxies))
 
             # Cập nhật số liệu minh bạch của từng worker node
-            worker_id = f"{client_ip}:{key[-8:]}" if key else client_ip
+            worker_id = f"{client_ip}:{key[-8:]}" if (key and len(key) >= 8) else client_ip
             now = time.time()
             if worker_id not in server.state.active_workers:
                 server.state.active_workers[worker_id] = {
@@ -878,24 +934,40 @@ class handler(BaseHTTPRequestHandler):
                     "ip": client_ip,
                     "key": key or "--",
                     "connected_at": time.strftime("%H:%M:%S"),
-                    "checked": delta_checked,
-                    "live": len(live_proxies),
+                    "checked": client_total_checked or delta_checked,
+                    "live": client_total_live or len(live_proxies),
                     "speed": worker_speed,
                     "last_seen": now
                 }
             else:
                 w = server.state.active_workers[worker_id]
                 w["last_seen"] = now
-                w["checked"] += delta_checked
-                w["live"] += len(live_proxies)
+                if client_total_checked > 0:
+                    w["checked"] = max(w.get("checked", 0), client_total_checked)
+                else:
+                    w["checked"] = w.get("checked", 0) + delta_checked
+
+                if client_total_live > 0:
+                    w["live"] = max(w.get("live", 0), client_total_live)
+                else:
+                    w["live"] = w.get("live", 0) + len(live_proxies)
+
                 if worker_speed > 0:
                     w["speed"] = worker_speed
 
             # Cập nhật số lượng đã quét cho key trong DB
-            if key in server.keys_db.get("keys", {}):
+            if key and key in server.keys_db.get("keys", {}):
                 k_rec = server.keys_db["keys"][key]
-                k_rec["total_submitted"] = k_rec.get("total_submitted", 0) + len(live_proxies)
-                k_rec["total_checked"] = k_rec.get("total_checked", 0) + delta_checked
+                if client_total_live > 0:
+                    k_rec["total_submitted"] = max(k_rec.get("total_submitted", 0), client_total_live)
+                else:
+                    k_rec["total_submitted"] = k_rec.get("total_submitted", 0) + len(live_proxies)
+
+                if client_total_checked > 0:
+                    k_rec["total_checked"] = max(k_rec.get("total_checked", 0), client_total_checked)
+                else:
+                    k_rec["total_checked"] = k_rec.get("total_checked", 0) + delta_checked
+
                 k_rec["last_seen"] = time.strftime("%Y-%m-%d %H:%M:%S")
 
             for p in live_proxies:
@@ -949,7 +1021,8 @@ class handler(BaseHTTPRequestHandler):
                 wait_time=wait_time,
                 discord_started_at=now_ts,
                 discord_verified=False,
-                discord_user=username
+                discord_user=username,
+                created_at=sess.get("created_at")
             )
             return self.send_json({
                 "status": "ok",
