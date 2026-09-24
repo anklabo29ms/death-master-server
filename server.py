@@ -56,6 +56,7 @@ GETKEY_END_PAGE = os.path.join(BASE_DIR, "getkey_end.html")       # Link 3: Deat
 GETKEY_VERIFY_PAGE = os.path.join(BASE_DIR, "getkey_verify.html") # Legacy alias
 SHORTENER_PAGE = os.path.join(BASE_DIR, "shortener.html")         # Hệ thống rút gọn Death-Shortener
 KEYS_FILE = os.path.join(WRITABLE_DIR, "keys.json")
+STATE_FILE = os.path.join(WRITABLE_DIR, "server_state.json")
 TERMS_PAGE = os.path.join(BASE_DIR, "terms.html")
 HOSTING_AUP_PAGE = os.path.join(BASE_DIR, "hosting_aup.html")
 TERMS_FILE = os.path.join(BASE_DIR, "TERMS_OF_SERVICE.md")
@@ -226,7 +227,28 @@ def verify_death_key(key_str: str, client_ip: str = "") -> tuple[bool, str]:
     if exp_str == "00000000":
         record = keys_db["keys"].get(key_str)
         if not record:
-            return False, "Key không tồn tại trên hệ thống."
+            # Chữ ký HMAC đã được kiểm tra hợp lệ 100% bằng SECRET_SALT
+            # Tự động khởi tạo bản ghi active 24h cho môi trường Serverless đa container
+            now_ts = time.time()
+            record = {
+                "key": key_str,
+                "key_type": "free_24h",
+                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "activated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "expires_timestamp": now_ts + 86400,
+                "expires_at": (datetime.now() + timedelta(hours=24)).strftime("%d/%m/%Y %H:%M"),
+                "days": 1,
+                "status": "active",
+                "notes": "Free 24h Verified by HMAC",
+                "last_ip": client_ip or "127.0.0.1",
+                "last_seen": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "total_submitted": 0,
+                "total_checked": 0
+            }
+            keys_db["keys"][key_str] = record
+            save_keys_data(keys_db)
+            return True, "Key đã kích hoạt thành công (Hạn 24 giờ)!"
+
         if record.get("status") == "banned":
             return False, "Khóa này đã bị Admin cấm (Banned)."
 
@@ -860,7 +882,8 @@ class MasterServerState:
             "top_countries": top_countries,
             "total_countries_count": len(countries_snap),
             "active_clients_count": len(online_workers_list),
-            "workers": online_workers_list
+            "workers": online_workers_list,
+            "recent_live": list(self.recent_live)[-40:]
         }
 
 state = MasterServerState()
@@ -873,6 +896,126 @@ if os.path.exists(SOURCES_FILE):
 saved_proxies = set()
 task_buffer = deque(maxlen=300000)
 seen_proxies = set()
+
+def save_server_state():
+    """Lưu snapshot trạng thái server xuống disk (hỗ trợ môi trường Vercel Serverless & Multi-process)."""
+    try:
+        snap = {
+            "checked_total": state.checked_total,
+            "total_live": state.total_live,
+            "elite_count": state.elite_count,
+            "dead_count": state.dead_count,
+            "residential_count": state.residential_count,
+            "datacenter_count": state.datacenter_count,
+            "tier_ultra": state.tier_ultra,
+            "proto_live": state.proto_live,
+            "active_workers": {
+                wid: w for wid, w in state.active_workers.items()
+                if (time.time() - w.get("last_seen", 0)) < 300
+            },
+            "recent_live": list(state.recent_live)[-60:],
+            "updated_at": time.time()
+        }
+        with open(STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(snap, f, ensure_ascii=False)
+    except Exception:
+        pass
+
+def load_server_state():
+    """Khôi phục snapshot trạng thái server từ disk."""
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, "r", encoding="utf-8") as f:
+                snap = json.load(f)
+                state.checked_total = max(state.checked_total, snap.get("checked_total", 0))
+                state.total_live = max(state.total_live, snap.get("total_live", 0))
+                state.elite_count = max(state.elite_count, snap.get("elite_count", 0))
+                state.dead_count = max(state.dead_count, snap.get("dead_count", 0))
+                state.residential_count = max(state.residential_count, snap.get("residential_count", 0))
+                state.datacenter_count = max(state.datacenter_count, snap.get("datacenter_count", 0))
+                state.tier_ultra = max(state.tier_ultra, snap.get("tier_ultra", 0))
+                if snap.get("proto_live"):
+                    for k, v in snap["proto_live"].items():
+                        state.proto_live[k] = max(state.proto_live.get(k, 0), v)
+                for wid, w in snap.get("active_workers", {}).items():
+                    if wid not in state.active_workers or state.active_workers[wid].get("last_seen", 0) < w.get("last_seen", 0):
+                        state.active_workers[wid] = w
+                if snap.get("recent_live") and not state.recent_live:
+                    for p in snap["recent_live"]:
+                        state.recent_live.append(p)
+        except Exception:
+            pass
+
+def save_live_proxy_record(p: dict) -> dict:
+    """Xử lý và lưu một proxy sống nhận được từ Client/Worker Node."""
+    proto = p.get("proto", "http")
+    ip = p.get("ip")
+    port = p.get("port")
+    country = p.get("country", "??")
+    ping = int(p.get("ping", 999))
+    exit_ip = p.get("exit_ip", "")
+    colo = p.get("colo", "")
+    target_info = p.get("target_status", "OK")
+
+    proxy_str = f"{ip}:{port}"
+    full_proxy = f"{proto}://{proxy_str}"
+
+    is_residential = bool(p.get("is_residential", False))
+    if is_residential:
+        state.residential_count += 1
+    else:
+        state.datacenter_count += 1
+
+    state.total_live += 1
+    state.proto_live[proto] = state.proto_live.get(proto, 0) + 1
+    state.countries[country] += 1
+    state.latencies.append(ping)
+
+    if ping < 350:
+        state.tier_ultra += 1
+    is_elite = ping <= 650
+    if is_elite:
+        state.elite_count += 1
+
+    # Lưu tệp kết quả
+    if full_proxy not in saved_proxies:
+        saved_proxies.add(full_proxy)
+        try:
+            with open(OUT_ALL_GOOD, "a", encoding="utf-8") as f:
+                f.write(f"{full_proxy}\n")
+            if is_elite:
+                with open(OUT_ELITE, "a", encoding="utf-8") as f:
+                    f.write(f"{full_proxy}\n")
+            if is_residential:
+                with open(OUT_RESIDENTIAL, "a", encoding="utf-8") as f:
+                    f.write(f"{full_proxy}\n")
+            proto_file = OUT_HTTP if proto == "http" else (OUT_SOCKS4 if proto == "socks4" else OUT_SOCKS5)
+            with open(proto_file, "a", encoding="utf-8") as f:
+                f.write(f"{proxy_str}\n")
+            with open(OUT_DETAILED, "a", encoding="utf-8") as f:
+                res_tag = "RESIDENTIAL" if is_residential else "DATACENTER"
+                f.write(f"{full_proxy:<30} | {country:<3} | {ping:>4}ms | {res_tag:<11} | Target: {target_info:<10} | Exit: {exit_ip} ({colo})\n")
+        except Exception:
+            pass
+
+    proxy_obj = {
+        "proto": proto,
+        "ip": ip,
+        "port": port,
+        "country": country,
+        "flag": get_flag(country),
+        "ping": ping,
+        "exit_ip": exit_ip,
+        "colo": colo,
+        "target": target_info,
+        "residential": is_residential,
+        "time": datetime.now().strftime("%H:%M:%S")
+    }
+    state.recent_live.append(proxy_obj)
+    return proxy_obj
+
+# Nạp state ngay khi module load
+load_server_state()
 
 # WebSocket clients
 class SafeWSClient:

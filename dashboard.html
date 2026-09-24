@@ -1673,6 +1673,17 @@
 
       if (data.stage) document.getElementById('scannerStage').innerText = data.stage;
       if (data.cycle) document.getElementById('scannerCycle').innerText = `#${data.cycle}`;
+
+      if (Array.isArray(data.recent_live) && data.recent_live.length > 0) {
+        if (!window._seenLiveProxies) window._seenLiveProxies = new Set();
+        data.recent_live.forEach(p => {
+          const pKey = `${p.proto}://${p.ip}:${p.port}`;
+          if (!window._seenLiveProxies.has(pKey)) {
+            window._seenLiveProxies.add(pKey);
+            handleNewLive(p);
+          }
+        });
+      }
       if (data.sources_total) {
         const scEl = document.getElementById('sourcesCountHeader');
         if (scEl) scEl.innerText = `${data.sources_total} Sources API`;

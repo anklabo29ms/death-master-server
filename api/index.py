@@ -497,6 +497,7 @@ class handler(BaseHTTPRequestHandler):
 
         # 2. Public REST APIs
         if path in ("/api/stats", "/stats"):
+            server.load_server_state()
             if server.state.total_scraped == 0 or len(server.task_buffer) < 200:
                 serverless_harvest_tasks(needed=400)
             data = server.state.get_dict()
@@ -861,16 +862,54 @@ class handler(BaseHTTPRequestHandler):
                 return self.send_json({"status": "error", "message": msg}, status=401)
 
             live_proxies = body.get("live_proxies", [])
-            delta_checked = int(body.get("delta_checked", 0))
+            delta_checked = int(body.get("delta_checked", body.get("checked_count", 0)))
+            worker_speed = int(body.get("speed", 0))
 
             if delta_checked > 0:
                 server.state.checked_total += delta_checked
                 server.state.dead_count += max(0, delta_checked - len(live_proxies))
 
+            # Cập nhật số liệu minh bạch của từng worker node
+            worker_id = f"{client_ip}:{key[-8:]}" if key else client_ip
+            now = time.time()
+            if worker_id not in server.state.active_workers:
+                server.state.active_workers[worker_id] = {
+                    "id": worker_id,
+                    "ip": client_ip,
+                    "key": key or "--",
+                    "connected_at": time.strftime("%H:%M:%S"),
+                    "checked": delta_checked,
+                    "live": len(live_proxies),
+                    "speed": worker_speed,
+                    "last_seen": now
+                }
+            else:
+                w = server.state.active_workers[worker_id]
+                w["last_seen"] = now
+                w["checked"] += delta_checked
+                w["live"] += len(live_proxies)
+                if worker_speed > 0:
+                    w["speed"] = worker_speed
+
+            # Cập nhật số lượng đã quét cho key trong DB
+            if key in server.keys_db.get("keys", {}):
+                k_rec = server.keys_db["keys"][key]
+                k_rec["total_submitted"] = k_rec.get("total_submitted", 0) + len(live_proxies)
+                k_rec["total_checked"] = k_rec.get("total_checked", 0) + delta_checked
+                k_rec["last_seen"] = time.strftime("%Y-%m-%d %H:%M:%S")
+
             for p in live_proxies:
                 server.save_live_proxy_record(p)
 
-            return self.send_json({"status": "ok", "accepted": len(live_proxies)})
+            # Đồng bộ state xuống disk (bền vững đa container serverless)
+            server.save_server_state()
+
+            return self.send_json({
+                "status": "ok",
+                "accepted": len(live_proxies),
+                "total_checked": server.state.checked_total,
+                "total_live": server.state.total_live
+            })
 
         if path in ("/api/getkey/start", "/getkey/start"):
             cid = str(body.get("cid") or body.get("captcha_id") or "").strip()
