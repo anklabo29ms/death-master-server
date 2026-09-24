@@ -1522,25 +1522,43 @@
       }
     }
 
-    // Kết Nối WebSocket Kèm Cơ Chế HTTP Polling Fallback
+    // Kết Nối WebSocket Kèm Cơ Chế HTTP Polling Fallback Thông Minh
+    let wsFailures = 0;
+    let wsDisabled = false;
+
     function connectWebSocket() {
       const loc = window.location;
       let host = loc.host;
       if (!host || loc.protocol === 'file:') host = '127.0.0.1:5000';
 
-      const wsUrl = (loc.protocol === 'https:' ? 'wss://' : 'ws://') + host + '/ws';
+      const isVercel = loc.hostname.endsWith('vercel.app') || loc.hostname.includes('now.sh');
       const wsDot = document.getElementById('wsDot');
       const wsStatus = document.getElementById('wsStatus');
+
+      // Vercel Serverless không hỗ trợ WebSocket -> Chuyển thẳng sang HTTP Polling siêu mượt
+      if (isVercel || wsDisabled) {
+        if (wsDot) wsDot.style.background = '#10b981';
+        if (wsStatus) {
+          wsStatus.innerText = 'Realtime (Vercel Cloud)';
+          wsStatus.style.color = '#10b981';
+        }
+        startFallbackPolling();
+        return;
+      }
+
+      const wsUrl = (loc.protocol === 'https:' ? 'wss://' : 'ws://') + host + '/ws';
 
       try {
         ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
-          wsDot.style.background = '#10b981';
-          wsStatus.innerText = 'Realtime Connected';
-          wsStatus.style.color = '#10b981';
+          wsFailures = 0;
+          if (wsDot) wsDot.style.background = '#10b981';
+          if (wsStatus) {
+            wsStatus.innerText = 'Realtime Connected';
+            wsStatus.style.color = '#10b981';
+          }
           appendLog('Đã kết nối thành công WebSocket.', 'system');
-          // Tắt timer polling nếu websocket hoạt động
           if (fallbackPollTimer) { clearInterval(fallbackPollTimer); fallbackPollTimer = null; }
         };
 
@@ -1558,23 +1576,44 @@
         };
 
         ws.onclose = () => {
-          wsDot.style.background = '#f43f5e';
-          wsStatus.innerText = 'Đứt WS (Dùng HTTP Poll...)';
-          wsStatus.style.color = '#f59e0b';
+          wsFailures++;
+          if (wsFailures >= 2) {
+            wsDisabled = true;
+            if (wsDot) wsDot.style.background = '#10b981';
+            if (wsStatus) {
+              wsStatus.innerText = 'Realtime (HTTP Poll)';
+              wsStatus.style.color = '#10b981';
+            }
+            startFallbackPolling();
+            return;
+          }
+
+          if (wsDot) wsDot.style.background = '#f59e0b';
+          if (wsStatus) {
+            wsStatus.innerText = 'Chuyển HTTP Poll...';
+            wsStatus.style.color = '#f59e0b';
+          }
           startFallbackPolling();
-          setTimeout(connectWebSocket, 3000);
+          setTimeout(connectWebSocket, 4000);
         };
 
         ws.onerror = () => {
-          ws.close();
+          try { ws.close(); } catch(e) {}
         };
       } catch (err) {
+        wsDisabled = true;
         startFallbackPolling();
       }
     }
 
-    // Cơ chế HTTP Fallback Polling (Bảo hiểm 100% nếu mạng chặn WS)
+    // Cơ chế HTTP Fallback Polling (Tự động cập nhật 1.5s/lần khi chạy Serverless / Vercel)
     function startFallbackPolling() {
+      // Cập nhật ngay tức thì lần đầu
+      fetch('/api/stats')
+        .then(r => r.json())
+        .then(data => updateDashboard(data))
+        .catch(() => {});
+
       if (fallbackPollTimer) return;
       fallbackPollTimer = setInterval(() => {
         fetch('/api/stats')
