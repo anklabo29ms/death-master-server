@@ -507,8 +507,7 @@ async def shorten_link4m_url(destination_url: str, api_token: str) -> str:
     return ""
 
 def generate_math_captcha() -> tuple[str, str]:
-    """Sinh phép tính ngẫu nhiên (Cộng, Trừ, Nhân) chống bot tự động."""
-    cid = secrets.token_hex(8)
+    """Sinh phép tính ngẫu nhiên (Cộng, Trừ, Nhân) chống bot tự động kèm chữ ký HMAC."""
     op = secrets.choice(["+", "-", "*"])
     if op == "+":
         a = secrets.randbelow(40) + 12
@@ -527,6 +526,11 @@ def generate_math_captcha() -> tuple[str, str]:
         expr = f"{a} × {b}"
 
     now = time.time()
+    ts = int(now)
+    salt = SECRET_SALT or keys_db.get("secret_salt", "DeathSuperSecretHMACSalt998877")
+    sig = hmac.new(salt.encode("utf-8"), f"dcap_{ans}_{ts}".encode("utf-8"), hashlib.sha256).hexdigest()[:16]
+    cid = f"dcap_{ts}_{sig}"
+
     for k in list(captcha_sessions.keys()):
         if now - captcha_sessions[k]["created_at"] > 600:
             del captcha_sessions[k]
@@ -537,6 +541,37 @@ def generate_math_captcha() -> tuple[str, str]:
         "created_at": now
     }
     return cid, expr
+
+def verify_stateless_captcha(cid: str, user_ans: str | int) -> bool:
+    """Xác thực captcha bằng HMAC stateless hoặc in-memory."""
+    if not cid or user_ans is None:
+        return False
+    cid_str = str(cid).strip()
+    u_ans = str(user_ans).strip()
+    if not cid_str or not u_ans:
+        return False
+
+    # 1. In-memory check
+    if cid_str in captcha_sessions:
+        expected = str(captcha_sessions[cid_str].get("answer", "")).strip()
+        if expected and expected == u_ans:
+            return True
+
+    # 2. Stateless HMAC check
+    if cid_str.startswith("dcap_"):
+        parts = cid_str.split("_")
+        if len(parts) == 3:
+            _, ts_str, sig = parts
+            try:
+                ts = int(ts_str)
+                if abs(time.time() - ts) < 900:
+                    salt = SECRET_SALT or keys_db.get("secret_salt", "DeathSuperSecretHMACSalt998877")
+                    expected_sig = hmac.new(salt.encode("utf-8"), f"dcap_{u_ans}_{ts}".encode("utf-8"), hashlib.sha256).hexdigest()[:16]
+                    if hmac.compare_digest(sig, expected_sig):
+                        return True
+            except Exception:
+                pass
+    return False
 
 def mask_ip(ip: str, port: int | str) -> str:
     """Che 2 octet giữa của IP (ví dụ: 103.152.***.***:1080) để bảo vệ công sức người scan."""
@@ -1659,7 +1694,9 @@ async def api_getkey_captcha(request):
     return web.json_response({
         "status": "ok",
         "cid": cid,
+        "captcha_id": cid,
         "challenge": challenge,
+        "expr": challenge,
         "client_ip": client_ip,
         "min_duration": settings.get("min_bypass_duration", 60),
         "has_link4m_api": bool(settings.get("link4m_api_token"))
@@ -1689,24 +1726,16 @@ async def api_getkey_start(request):
     except Exception:
         body = {}
 
-    cid = body.get("cid", "")
+    cid = str(body.get("cid") or body.get("captcha_id") or "").strip()
     ans_str = str(body.get("answer", "")).strip()
 
-    if not cid or cid not in captcha_sessions:
-        return web.json_response({"status": "error", "message": "Phiên Captcha đã hết hạn hoặc không hợp lệ. Vui lòng bấm làm mới!"}, status=400)
+    if not cid or not ans_str or not verify_stateless_captcha(cid, ans_str):
+        return web.json_response({"status": "error", "message": "Đáp án Captcha không chính xác hoặc đã hết hạn!"}, status=400)
 
-    session = captcha_sessions[cid]
-    try:
-        user_ans = int(ans_str)
-    except ValueError:
-        return web.json_response({"status": "error", "message": "Đáp án Captcha phải là số!"}, status=400)
-
-    if user_ans != session["answer"]:
+    if cid in captcha_sessions:
         del captcha_sessions[cid]
-        return web.json_response({"status": "error", "message": "Đáp án Captcha sai! Vui lòng tính toán lại."}, status=400)
 
     # Đã giải đúng Captcha -> Cấp token bảo mật 32-bytes
-    del captcha_sessions[cid]
     token = secrets.token_urlsafe(32)
     now_ts = time.time()
     pow_challenge = secrets.token_hex(6) # 12 hex chars

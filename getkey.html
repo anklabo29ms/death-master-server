@@ -276,8 +276,9 @@
         .then(r => r.json())
         .then(data => {
           if (data.status === "ok") {
-            document.getElementById("mathExpr").innerText = data.challenge + " = ?";
-            document.getElementById("captchaCid").value = data.cid;
+            const expr = data.challenge || data.expr || "";
+            document.getElementById("mathExpr").innerText = expr + " = ?";
+            document.getElementById("captchaCid").value = data.cid || data.captcha_id || "";
             document.getElementById("captchaAnswer").value = "";
             document.getElementById("captchaAnswer").focus();
             if (data.client_ip) {
@@ -317,7 +318,7 @@
       fetch("/api/getkey/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cid: cid, answer: ans })
+        body: JSON.stringify({ cid: cid, captcha_id: cid, answer: ans })
       })
       .then(async r => {
         const data = await r.json();
@@ -326,13 +327,9 @@
           if (callbackSuccess) {
             callbackSuccess(data);
           } else {
-            // Chuyển hướng thực tế tới link4m hoặc trang xác minh
-            if (data.redirect_url) {
-              window.location.href = data.redirect_url;
-            } else {
-              // Mặc định mở modal giả lập để người dùng test
-              openSimModal(false);
-            }
+            // Chuyển hướng thực tế tới link rút gọn hoặc bước tiếp theo
+            const dest = data.redirect_url || data.shortener_url || ("/getkey/shortener?token=" + encodeURIComponent(data.token));
+            window.location.href = dest;
           }
         } else {
           showError(data.message || "Đáp án Captcha sai! Vui lòng thử lại.");

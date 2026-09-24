@@ -3,6 +3,8 @@ import sys
 import json
 import re
 import time
+import base64
+import random
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
 
@@ -115,6 +117,140 @@ def verify_admin_token(token):
             except Exception:
                 pass
     return False
+
+def make_stateless_captcha():
+    """Sinh phép tính ngẫu nhiên & chữ ký HMAC để xác minh stateless chống bot."""
+    ts = int(time.time())
+    secret = get_admin_secret()
+    op = random.choice(["+", "-", "*"])
+    if op == "+":
+        a = random.randint(12, 50)
+        b = random.randint(8, 35)
+        ans = a + b
+        expr = f"{a} + {b}"
+    elif op == "-":
+        a = random.randint(25, 60)
+        b = random.randint(5, 20)
+        ans = a - b
+        expr = f"{a} - {b}"
+    else:
+        a = random.randint(2, 9)
+        b = random.randint(3, 9)
+        ans = a * b
+        expr = f"{a} × {b}"
+    
+    sig = server.hmac.new(secret.encode("utf-8"), f"dcap_{ans}_{ts}".encode("utf-8"), server.hashlib.sha256).hexdigest()[:16]
+    cid = f"dcap_{ts}_{sig}"
+    
+    if hasattr(server, "captcha_sessions"):
+        server.captcha_sessions[cid] = {
+            "challenge": expr,
+            "answer": ans,
+            "created_at": ts
+        }
+    return cid, expr, ans
+
+def verify_stateless_captcha(cid, user_ans):
+    """Xác thực phép tính captcha không cần bộ nhớ máy chủ (stateless HMAC)."""
+    if not cid or user_ans is None:
+        return False
+    cid = str(cid).strip()
+    user_ans = str(user_ans).strip()
+    if not cid or not user_ans:
+        return False
+
+    # 1. In-memory check (nếu cùng process hoặc local server.py)
+    if hasattr(server, "captcha_sessions") and cid in server.captcha_sessions:
+        expected = str(server.captcha_sessions[cid].get("answer", "")).strip()
+        if expected and expected == user_ans:
+            return True
+
+    # 2. Stateless HMAC check
+    if cid.startswith("dcap_"):
+        parts = cid.split("_")
+        if len(parts) == 3:
+            _, ts_str, sig = parts
+            try:
+                ts = int(ts_str)
+                # Cho phép giải trong vòng 15 phút (900s)
+                if abs(time.time() - ts) < 900:
+                    secret = get_admin_secret()
+                    expected_sig = server.hmac.new(secret.encode("utf-8"), f"dcap_{user_ans}_{ts}".encode("utf-8"), server.hashlib.sha256).hexdigest()[:16]
+                    if server.hmac.compare_digest(sig, expected_sig):
+                        return True
+            except Exception:
+                pass
+    return False
+
+def generate_stateless_getkey_token(ip="127.0.0.1", wait_time=90):
+    """Sinh phiên GetKey mã hóa stateless kèm chữ ký HMAC (hoạt động đa máy chủ Vercel Serverless)."""
+    ts = int(time.time())
+    secret = get_admin_secret()
+    nonce = server.secrets.token_hex(4)
+    raw = f"{ts}:{int(wait_time)}:{ip}:{nonce}"
+    data_b64 = base64.urlsafe_b64encode(raw.encode("utf-8")).decode("utf-8").rstrip("=")
+    sig = server.hmac.new(secret.encode("utf-8"), f"dgk_{data_b64}".encode("utf-8"), server.hashlib.sha256).hexdigest()[:16]
+    token = f"dgk_{data_b64}_{sig}"
+    
+    sess = {
+        "created_at": float(ts),
+        "ip": ip,
+        "required_wait": int(wait_time),
+        "discord_verified": True,
+        "pow_solved": True,
+        "claimed_key": "",
+        "used": False
+    }
+    if hasattr(server, "getkey_tokens"):
+        server.getkey_tokens[token] = sess
+    if hasattr(server, "ip_getkey_sessions"):
+        server.ip_getkey_sessions[ip] = token
+    return token
+
+def verify_and_decode_getkey_token(token):
+    """Giải mã và xác minh tính toàn vẹn của phiên GetKey stateless."""
+    if not token or not isinstance(token, str):
+        return None
+    token = token.strip()
+    
+    # 1. In-memory check
+    if hasattr(server, "getkey_tokens") and token in server.getkey_tokens:
+        return server.getkey_tokens[token]
+        
+    # 2. Stateless HMAC check
+    if token.startswith("dgk_"):
+        parts = token.split("_")
+        if len(parts) == 3:
+            _, data_b64, sig = parts
+            try:
+                secret = get_admin_secret()
+                expected_sig = server.hmac.new(secret.encode("utf-8"), f"dgk_{data_b64}".encode("utf-8"), server.hashlib.sha256).hexdigest()[:16]
+                if server.hmac.compare_digest(sig, expected_sig):
+                    pad = len(data_b64) % 4
+                    padded_b64 = data_b64 + ("=" * (4 - pad) if pad > 0 else "")
+                    raw = base64.urlsafe_b64decode(padded_b64.encode("utf-8")).decode("utf-8")
+                    p = raw.split(":")
+                    if len(p) >= 3:
+                        ts = float(p[0])
+                        wait_time = int(p[1])
+                        ip = p[2]
+                        # Token có hiệu lực tối đa 3 giờ (10800s)
+                        if abs(time.time() - ts) < 10800:
+                            sess = {
+                                "created_at": ts,
+                                "ip": ip,
+                                "required_wait": wait_time,
+                                "discord_verified": True,
+                                "pow_solved": True,
+                                "claimed_key": "",
+                                "used": False
+                            }
+                            if hasattr(server, "getkey_tokens"):
+                                server.getkey_tokens[token] = sess
+                            return sess
+            except Exception:
+                pass
+    return None
 
 class handler(BaseHTTPRequestHandler):
     """Vercel Serverless Function Handler - Hỗ trợ toàn diện 100% Web Pages & REST APIs."""
@@ -322,75 +458,133 @@ class handler(BaseHTTPRequestHandler):
             })
 
         if path in ("/api/getkey/captcha", "/getkey/captcha"):
-            cid, challenge = server.generate_math_captcha()
-            return self.send_json({"status": "ok", "captcha_id": cid, "challenge": challenge})
+            cid, expr, ans = make_stateless_captcha()
+            return self.send_json({
+                "status": "ok",
+                "cid": cid,
+                "captcha_id": cid,
+                "challenge": expr,
+                "expr": expr,
+                "min_duration": 90,
+                "client_ip": client_ip,
+                "has_link4m_api": False
+            })
 
         if path in ("/api/shortener/discord-status", "/shortener/discord-status"):
             token = query.get("token", [""])[0]
-            sess = server.getkey_tokens.get(token)
+            sess = verify_and_decode_getkey_token(token)
             if not sess:
                 return self.send_json({"status": "error", "message": "Phiên không hợp lệ hoặc đã hết hạn!"}, status=400)
             elapsed = int(time.time() - sess["created_at"])
-            remaining = max(0, sess["required_wait"] - elapsed)
-            return self.send_json({
-                "status": "ok",
-                "verified": sess.get("discord_verified", False),
-                "elapsed": elapsed,
-                "remaining": remaining,
-                "required": sess["required_wait"]
-            })
+            wait_time = int(sess.get("required_wait", 90))
+            remaining = max(0, wait_time - elapsed)
+            if remaining <= 0 or sess.get("discord_verified", False):
+                return self.send_json({
+                    "status": "verified",
+                    "verified": True,
+                    "elapsed": elapsed,
+                    "remaining": 0,
+                    "required": wait_time,
+                    "next_url": f"/getkey/middle?token={token}"
+                })
+            else:
+                return self.send_json({
+                    "status": "checking",
+                    "verified": False,
+                    "elapsed": elapsed,
+                    "remaining": remaining,
+                    "required": wait_time
+                })
 
         if path in ("/api/getkey/middle-status", "/getkey/middle-status"):
             token = query.get("token", [""])[0]
-            sess = server.getkey_tokens.get(token)
+            sess = verify_and_decode_getkey_token(token)
             if not sess:
                 return self.send_json({"status": "error", "message": "Phiên không hợp lệ hoặc đã hết hạn!"}, status=400)
             elapsed = int(time.time() - sess["created_at"])
-            remaining = max(0, sess["required_wait"] - elapsed)
+            wait_time = int(sess.get("required_wait", 90))
+            remaining = max(0, wait_time - elapsed)
+            is_wl = server.is_ip_whitelisted(client_ip) if hasattr(server, "is_ip_whitelisted") else False
             return self.send_json({
                 "status": "ok",
                 "elapsed": elapsed,
+                "total_elapsed": elapsed,
                 "remaining": remaining,
-                "required": sess["required_wait"],
-                "pow_solved": sess.get("pow_solved", False),
+                "required": wait_time,
+                "total_min": wait_time,
+                "can_redeem": (remaining <= 0 or is_wl),
+                "discord_verified": True,
+                "is_whitelisted": is_wl,
+                "pow_solved": sess.get("pow_solved", True),
                 "pow_challenge": sess.get("pow_challenge", "")
             })
 
         if path in ("/api/getkey/verify", "/getkey/verify"):
             token = query.get("token", [""])[0]
-            sess = server.getkey_tokens.get(token)
+            sess = verify_and_decode_getkey_token(token)
             if not sess:
                 return self.send_json({"status": "error", "message": "Phiên không hợp lệ hoặc đã hết hạn!"}, status=400)
             
-            elapsed = time.time() - sess["created_at"]
-            if elapsed < sess["required_wait"]:
-                server.record_bypass_strike(client_ip, f"Bypass Link (Đốt thiếu {int(sess['required_wait'] - elapsed)}s)")
-                return self.send_json({"status": "error", "message": "Vượt link quá nhanh (Bypass detected)!"}, status=403)
+            elapsed = int(time.time() - sess["created_at"])
+            wait_time = int(sess.get("required_wait", 90))
+            is_wl = server.is_ip_whitelisted(client_ip) if hasattr(server, "is_ip_whitelisted") else False
+            if elapsed < wait_time and not is_wl:
+                strikes = 1
+                is_banned = False
+                if hasattr(server, "record_bypass_strike"):
+                    strikes, is_banned = server.record_bypass_strike(client_ip, f"Bypass Link (Đốt thiếu {wait_time - elapsed}s)")
+                return self.send_json({
+                    "status": "blocked",
+                    "message": "Vượt link quá nhanh (Bypass detected)!",
+                    "elapsed": elapsed,
+                    "min_duration": wait_time,
+                    "strikes": strikes,
+                    "is_banned": is_banned
+                }, status=403)
+
+            # Kiểm tra xem IP này đã có key trong 24h chưa
+            if hasattr(server, "get_existing_active_key_for_ip"):
+                existing = server.get_existing_active_key_for_ip(client_ip)
+                if existing:
+                    return self.send_json({
+                        "status": "ok",
+                        "message": "Bạn đã có Key còn hạn trong 24h!",
+                        "key": existing.get("key"),
+                        "elapsed": elapsed,
+                        "is_existing": True
+                    })
 
             if not sess.get("claimed_key"):
                 new_key_data = server.generate_death_key(1, "Link Free 24h", client_ip, key_type="free_24h")
                 sess["claimed_key"] = new_key_data["key"]
                 sess["used"] = True
-                server.state.getkey_success_count += 1
+                if hasattr(server.state, "getkey_success_count"):
+                    server.state.getkey_success_count += 1
 
             return self.send_json({
                 "status": "ok",
                 "message": "Xác thực thành công!",
-                "key": sess["claimed_key"]
+                "key": sess["claimed_key"],
+                "elapsed": elapsed,
+                "is_existing": False
             })
 
         if path in ("/api/getkey/my-session", "/getkey/my-session"):
-            token = server.ip_getkey_sessions.get(client_ip)
-            sess = server.getkey_tokens.get(token) if token else None
+            token = server.ip_getkey_sessions.get(client_ip) if hasattr(server, "ip_getkey_sessions") else None
+            sess = verify_and_decode_getkey_token(token) if token else None
             if sess and not sess.get("used"):
                 elapsed = int(time.time() - sess["created_at"])
+                wait_time = int(sess.get("required_wait", 90))
                 return self.send_json({
                     "status": "ok",
                     "has_session": True,
                     "token": token,
                     "elapsed": elapsed,
-                    "remaining": max(0, sess["required_wait"] - elapsed),
-                    "required": sess["required_wait"]
+                    "total_elapsed": elapsed,
+                    "remaining": max(0, wait_time - elapsed),
+                    "required": wait_time,
+                    "total_min": wait_time,
+                    "discord_verified": True
                 })
             return self.send_json({"status": "ok", "has_session": False})
 
@@ -538,29 +732,21 @@ class handler(BaseHTTPRequestHandler):
             return self.send_json({"status": "ok", "accepted": len(live_proxies)})
 
         if path in ("/api/getkey/start", "/getkey/start"):
-            cid = body.get("captcha_id")
-            ans = body.get("answer")
-            sess = server.captcha_sessions.get(cid)
-            if not sess or str(sess.get("answer")) != str(ans).strip():
-                return self.send_json({"status": "error", "message": "Đáp án phép tính không chính xác!"}, status=400)
+            cid = str(body.get("cid") or body.get("captcha_id") or "").strip()
+            ans = str(body.get("answer") or "").strip()
+            if not cid or not ans or not verify_stateless_captcha(cid, ans):
+                return self.send_json({"status": "error", "message": "Đáp án phép tính không chính xác hoặc phiên đã hết hạn!"}, status=400)
             
-            token = server.secrets.token_urlsafe(32)
             wait_time = 90
-            server.getkey_tokens[token] = {
-                "created_at": time.time(),
-                "ip": client_ip,
-                "required_wait": wait_time,
-                "discord_verified": False,
-                "pow_solved": False,
-                "claimed_key": "",
-                "used": False
-            }
-            server.ip_getkey_sessions[client_ip] = token
+            token = generate_stateless_getkey_token(client_ip, wait_time)
             code = server.create_death_short_link(f"/getkey/middle?token={token}", duration=wait_time)
 
             return self.send_json({
                 "status": "ok",
                 "token": token,
+                "redirect_url": f"/getkey/shortener?token={token}",
+                "shortener_url": f"/getkey/shortener?token={token}",
+                "middle_url": f"/getkey/middle?token={token}",
                 "short_url": f"/s/{code}",
                 "short_code": code,
                 "wait_seconds": wait_time
@@ -568,13 +754,18 @@ class handler(BaseHTTPRequestHandler):
 
         if path in ("/api/shortener/discord-start", "/shortener/discord-start"):
             token = body.get("token")
-            username = body.get("username", "").strip()
-            sess = server.getkey_tokens.get(token)
+            username = str(body.get("username") or body.get("discord_user") or "").strip()
+            sess = verify_and_decode_getkey_token(token)
             if not sess:
-                return self.send_json({"status": "error", "message": "Phiên không hợp lệ!"}, status=400)
+                return self.send_json({"status": "error", "message": "Phiên không hợp lệ hoặc đã hết hạn!"}, status=400)
             sess["discord_username"] = username
             sess["discord_verified"] = True
-            return self.send_json({"status": "ok", "message": "Đã bắt đầu đối soát Discord!"})
+            wait_time = int(sess.get("required_wait", 90))
+            return self.send_json({
+                "status": "ok",
+                "message": "Đã bắt đầu đối soát Discord!",
+                "duration": wait_time
+            })
 
         if path in ("/api/control", "/control"):
             action = body.get("action", "")
