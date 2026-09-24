@@ -101,7 +101,66 @@
     }
     .dropdown-item:hover { background: #161f33; color: #10b981; }
 
-    /* ================= CYBERPUNK ADMIN PANEL & GLASS SUITE ================= */
+    /* ================= CYBERPUNK ANIMATION & HUD STYLES ================= */
+    #cyberCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+    .container, header, main, footer, .modal-backdrop {
+      position: relative;
+      z-index: 1;
+    }
+    @keyframes neonGlowCyan {
+      0%, 100% { box-shadow: 0 0 16px rgba(6, 182, 212, 0.15); border-color: rgba(6, 182, 212, 0.4); }
+      50% { box-shadow: 0 0 28px rgba(6, 182, 212, 0.35); border-color: rgba(6, 182, 212, 0.85); }
+    }
+    .card-cyan { animation: neonGlowCyan 4s infinite ease-in-out; }
+    
+    @keyframes neonGlowGreen {
+      0%, 100% { box-shadow: 0 0 16px rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); }
+      50% { box-shadow: 0 0 28px rgba(16, 185, 129, 0.35); border-color: rgba(16, 185, 129, 0.85); }
+    }
+    .card-green { animation: neonGlowGreen 4s infinite ease-in-out; }
+
+    @keyframes rowSlideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .anim-row { animation: rowSlideIn 0.3s ease-out; }
+
+    .cyber-hud-bar {
+      position: fixed;
+      bottom: 14px;
+      right: 18px;
+      z-index: 99;
+      background: rgba(13, 19, 34, 0.88);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(6, 182, 212, 0.2);
+      border-radius: 9999px;
+      padding: 6px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .kbd-pill {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #38bdf8;
+      font-size: 10px;
+      font-family: monospace;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
     .admin-glass-bg {
       background: radial-gradient(circle at 50% 0%, rgba(15, 23, 42, 0.98), rgba(4, 6, 14, 0.99));
       backdrop-filter: blur(28px);
@@ -3062,6 +3121,109 @@
       // 3. Kết nối WebSocket
       connectWebSocket();
     });
+
+    // ================= CYBER MATRIX CANVAS & KEYBOARD SHORTCUTS =================
+    (function initCyberBackground() {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.id = "cyberCanvas";
+        document.body.prepend(canvas);
+        const ctx = canvas.getContext("2d");
+        let w = canvas.width = window.innerWidth;
+        let h = canvas.height = window.innerHeight;
+
+        window.addEventListener("resize", () => {
+          w = canvas.width = window.innerWidth;
+          h = canvas.height = window.innerHeight;
+        });
+
+        const COUNT = 36;
+        const particles = [];
+        for (let i = 0; i < COUNT; i++) {
+          particles.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            vx: (Math.random() - 0.5) * 0.45,
+            vy: (Math.random() - 0.5) * 0.45,
+            r: Math.random() * 1.6 + 0.6,
+            color: Math.random() > 0.4 ? "rgba(6, 182, 212," : "rgba(168, 85, 247,"
+          });
+        }
+
+        function loop() {
+          ctx.clearRect(0, 0, w, h);
+          for (let i = 0; i < COUNT; i++) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            if (p.x < 0) p.x = w;
+            if (p.x > w) p.x = 0;
+            if (p.y < 0) p.y = h;
+            if (p.y > h) p.y = 0;
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fillStyle = p.color + " 0.65)";
+            ctx.fill();
+
+            for (let j = i + 1; j < COUNT; j++) {
+              const p2 = particles[j];
+              const dx = p.x - p2.x;
+              const dy = p.y - p2.y;
+              const d = Math.sqrt(dx * dx + dy * dy);
+              if (d < 125) {
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.strokeStyle = `rgba(6, 182, 212, ${0.16 * (1 - d / 125)})`;
+                ctx.lineWidth = 0.6;
+                ctx.stroke();
+              }
+            }
+          }
+          requestAnimationFrame(loop);
+        }
+        requestAnimationFrame(loop);
+      } catch (e) {}
+    })();
+
+    // Bộ lắng nghe phím tắt điều khiển Web UI
+    let webAutoRefreshPaused = false;
+    window.addEventListener("keydown", (e) => {
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)) return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        webAutoRefreshPaused = !webAutoRefreshPaused;
+        showToast(webAutoRefreshPaused ? "⏸ ĐÃ DỪNG AUTO-REFRESH (Space để bật lại)" : "▶ ĐÃ TIẾP TỤC AUTO-REFRESH", false);
+      } else if (e.key === "r" || e.key === "R") {
+        e.preventDefault();
+        showToast("⚡ Đang cập nhật dữ liệu...", false);
+        fetch('/api/stats').then(r => r.json()).then(data => updateDashboard(data)).catch(() => {});
+      } else if (e.key === "e" || e.key === "E") {
+        e.preventDefault();
+        const exportBtn = document.querySelector('button[onclick*="export"]') || document.querySelector('a[href*="/api/export/elite"]');
+        if (exportBtn) {
+          showToast("💾 Đang tải tệp Elite Proxies...", false);
+          window.location.href = "/api/export/elite";
+        }
+      } else if (e.key === "l" || e.key === "L") {
+        e.preventDefault();
+        const liveFeed = document.querySelector(".scroll-box") || document.querySelector("table");
+        if (liveFeed) {
+          liveFeed.scrollIntoView({ behavior: "smooth", block: "center" });
+          showToast("📜 Đã cuộn đến danh sách Proxy", false);
+        }
+      }
+    });
   </script>
+
+  <!-- Cyberpunk Floating Control HUD -->
+  <div class="cyber-hud-bar" id="cyberHudBar">
+    <span style="color:#06b6d4; font-weight:800; letter-spacing:0.05em;">⚡ CYBER HUD</span>
+    <span><span class="kbd-pill">Space</span> Tạm dừng</span>
+    <span><span class="kbd-pill">R</span> Làm mới</span>
+    <span><span class="kbd-pill">E</span> Tải Elite</span>
+    <span><span class="kbd-pill">L</span> Live Feed</span>
+  </div>
 </body>
 </html>
