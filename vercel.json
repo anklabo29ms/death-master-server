@@ -1,9 +1,19 @@
 {
   "version": 2,
+  "functions": {
+    "api/index.py": {
+      "includeFiles": [
+        "*.html",
+        "sources.txt",
+        "keys.json",
+        "*.md"
+      ]
+    }
+  },
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/api/index.py"
+      "destination": "/api/index.py?__orig_path=/$1"
     }
   ]
 }

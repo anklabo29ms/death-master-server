@@ -13,9 +13,39 @@ if SERVER_DIR not in sys.path:
 
 import server
 
+def find_static_file(filename_or_path):
+    """Tìm kiếm file an toàn trong mọi môi trường (Vercel Serverless Lambda, Docker, VPS, Local)."""
+    if not filename_or_path:
+        return None
+    if os.path.isfile(filename_or_path):
+        return filename_or_path
+    
+    basename = os.path.basename(filename_or_path)
+    candidates = [
+        filename_or_path,
+        os.path.join(SERVER_DIR, basename),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", basename),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), basename),
+        os.path.join(os.getcwd(), basename),
+        os.path.join("/var/task", basename),
+        os.path.join("/tmp", basename),
+        basename
+    ]
+    for c in candidates:
+        if c and os.path.isfile(c):
+            return c
+    return None
+
 def get_req_client_ip(headers, client_address=None):
     """Bóc tách IP thực tế của máy khách khi chạy sau Vercel / Cloudflare Reverse Proxy."""
-    for h in ["X-Vercel-Forwarded-For", "X-Real-IP", "CF-Connecting-IP", "X-Forwarded-For"]:
+    # Kiểm tra theo cả chữ thường lẫn định dạng chuẩn
+    check_headers = [
+        "x-vercel-forwarded-for", "X-Vercel-Forwarded-For",
+        "x-real-ip", "X-Real-IP",
+        "cf-connecting-ip", "CF-Connecting-IP",
+        "x-forwarded-for", "X-Forwarded-For"
+    ]
+    for h in check_headers:
         val = headers.get(h)
         if val:
             ip = val.split(",")[0].strip()
@@ -47,19 +77,21 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def send_html_file(self, file_path):
-        if os.path.exists(file_path):
-            with open(file_path, "r", encoding="utf-8") as f:
+        resolved = find_static_file(file_path)
+        if resolved and os.path.isfile(resolved):
+            with open(resolved, "r", encoding="utf-8") as f:
                 content = f.read().encode("utf-8")
             self.send_cors_and_headers(200, "text/html; charset=utf-8")
             self.wfile.write(content)
         else:
-            self.send_json({"error": "Page not found"}, status=404)
+            fname = os.path.basename(file_path) if file_path else "file"
+            self.send_json({"error": f"Page '{fname}' not found"}, status=404)
 
     def do_OPTIONS(self):
         self.send_cors_and_headers(204)
 
     def read_json_body(self):
-        content_len = int(self.headers.get("Content-Length", 0))
+        content_len = int(self.headers.get("Content-Length", 0) or self.headers.get("content-length", 0) or 0)
         if content_len > 0:
             try:
                 raw = self.rfile.read(content_len).decode("utf-8")
@@ -68,12 +100,57 @@ class handler(BaseHTTPRequestHandler):
                 return {}
         return {}
 
+    def get_header(self, name, default=None):
+        """Lấy header không phân biệt hoa thường."""
+        low_name = name.lower()
+        for k, v in self.headers.items():
+            if k.lower() == low_name:
+                return v
+        return default
+
     def parse_url_parts(self):
         parsed = urllib.parse.urlparse(self.path)
-        path = parsed.path.rstrip("/")
-        if not path:
-            path = "/"
+        raw_path = parsed.path.rstrip("/")
+        if not raw_path:
+            raw_path = "/"
         query = urllib.parse.parse_qs(parsed.query)
+
+        path = raw_path
+
+        # 1. Trích xuất đường dẫn gốc từ query parameter __orig_path (do vercel.json rewrite chuyển qua)
+        if "__orig_path" in query:
+            orig = query["__orig_path"][0]
+            if orig:
+                p_orig = urllib.parse.urlparse(orig).path.rstrip("/")
+                path = p_orig if p_orig else "/"
+
+        # 2. Kiểm tra các header do Vercel / Cloudflare Edge Router gắn vào nếu path đang là file handler
+        if path in ("/", "/api/index.py", "/api/index", "/api"):
+            for h in [
+                "x-matched-path",
+                "x-vercel-original-path",
+                "x-original-uri",
+                "x-forwarded-uri",
+                "x-invoke-path",
+                "x-real-path"
+            ]:
+                val = self.get_header(h)
+                if val:
+                    h_path = urllib.parse.urlparse(val).path.rstrip("/")
+                    if h_path and h_path not in ("/api/index.py", "/api/index", "/api"):
+                        path = h_path
+                        break
+
+        # 3. Xử lý trường hợp Vercel rewrite giữ lại prefix /api/index.py hoặc /api/index
+        for prefix in ["/api/index.py", "/api/index"]:
+            if path.startswith(prefix + "/"):
+                path = path[len(prefix):]
+                break
+
+        # 4. Khi path là chính file handler (/api/index.py hoặc /api/index hoặc /api hoặc rỗng) thì đó chính là Root "/"
+        if path in ("/api/index.py", "/api/index", "/api", ""):
+            path = "/"
+
         return path, query
 
     def do_GET(self):
@@ -85,22 +162,28 @@ class handler(BaseHTTPRequestHandler):
             return self.send_html_file(server.DASHBOARD_FILE)
 
         if path == "/terms":
-            if os.path.exists(server.TERMS_PAGE):
-                return self.send_html_file(server.TERMS_PAGE)
-            elif os.path.exists(server.TERMS_FILE):
-                with open(server.TERMS_FILE, "r", encoding="utf-8") as f:
+            p = find_static_file(server.TERMS_PAGE) or find_static_file("terms.html")
+            if p:
+                return self.send_html_file(p)
+            doc = find_static_file(server.TERMS_FILE) or find_static_file("TERMS_OF_SERVICE.md")
+            if doc:
+                with open(doc, "r", encoding="utf-8") as f:
                     content = f.read().encode("utf-8")
                 self.send_cors_and_headers(200, "text/markdown; charset=utf-8")
                 return self.wfile.write(content)
+            return self.send_json({"error": "Terms page not found"}, status=404)
 
         if path == "/hosting-aup":
-            if os.path.exists(server.HOSTING_AUP_PAGE):
-                return self.send_html_file(server.HOSTING_AUP_PAGE)
-            elif os.path.exists(server.HOSTING_AUP_FILE):
-                with open(server.HOSTING_AUP_FILE, "r", encoding="utf-8") as f:
+            p = find_static_file(server.HOSTING_AUP_PAGE) or find_static_file("hosting_aup.html")
+            if p:
+                return self.send_html_file(p)
+            doc = find_static_file(server.HOSTING_AUP_FILE) or find_static_file("HOSTING_AUP.md")
+            if doc:
+                with open(doc, "r", encoding="utf-8") as f:
                     content = f.read().encode("utf-8")
                 self.send_cors_and_headers(200, "text/markdown; charset=utf-8")
                 return self.wfile.write(content)
+            return self.send_json({"error": "Hosting AUP page not found"}, status=404)
 
         if path in ("/getkey", "/getkey/front"):
             return self.send_html_file(server.GETKEY_PAGE)
@@ -120,7 +203,7 @@ class handler(BaseHTTPRequestHandler):
             return self.send_json(data)
 
         if path == "/api/tasks":
-            key = self.headers.get("X-License-Key") or query.get("key", [None])[0]
+            key = self.get_header("X-License-Key") or query.get("key", [None])[0]
             valid, msg = server.verify_death_key(key, client_ip)
             if not valid:
                 return self.send_json({"status": "error", "message": msg}, status=401)
@@ -248,21 +331,21 @@ class handler(BaseHTTPRequestHandler):
             return self.send_json({"status": "error", "message": "Liên kết rút gọn không tồn tại!"}, status=404)
 
         if path == "/api/admin/keys":
-            token = self.headers.get("X-Admin-Token")
+            token = self.get_header("X-Admin-Token")
             if token not in server.active_admin_sessions:
                 return self.send_json({"status": "error", "message": "Unauthorized"}, status=401)
             keys_list = list(server.keys_db.get("keys", {}).values())
             return self.send_json({"status": "ok", "keys": keys_list})
 
         if path == "/api/admin/workers":
-            token = self.headers.get("X-Admin-Token")
+            token = self.get_header("X-Admin-Token")
             if token not in server.active_admin_sessions:
                 return self.send_json({"status": "error", "message": "Unauthorized"}, status=401)
             workers = list(server.state.active_workers.values())
             return self.send_json({"status": "ok", "workers": workers})
 
         if path == "/api/admin/shortener/links":
-            token = self.headers.get("X-Admin-Token")
+            token = self.get_header("X-Admin-Token")
             if token not in server.active_admin_sessions:
                 return self.send_json({"status": "error", "message": "Unauthorized"}, status=401)
             links = list(server.shortened_links_db.values())
@@ -271,8 +354,9 @@ class handler(BaseHTTPRequestHandler):
         if path.startswith("/download/"):
             filename = os.path.basename(path)
             target_f = os.path.join(server.WRITABLE_DIR, filename)
-            if os.path.exists(target_f):
-                with open(target_f, "r", encoding="utf-8") as f:
+            resolved = find_static_file(target_f) or (target_f if os.path.exists(target_f) else None)
+            if resolved and os.path.exists(resolved):
+                with open(resolved, "r", encoding="utf-8") as f:
                     content = f.read().encode("utf-8")
                 self.send_cors_and_headers(200, "text/plain; charset=utf-8")
                 return self.wfile.write(content)
@@ -286,7 +370,7 @@ class handler(BaseHTTPRequestHandler):
         body = self.read_json_body()
 
         if path == "/api/auth/verify":
-            key = body.get("key") or self.headers.get("X-License-Key")
+            key = body.get("key") or self.get_header("X-License-Key")
             valid, msg = server.verify_death_key(key, client_ip)
             if valid:
                 record = server.keys_db["keys"].get(key, {})
@@ -307,7 +391,7 @@ class handler(BaseHTTPRequestHandler):
             return self.send_json({"status": "error", "message": msg}, status=401)
 
         if path == "/api/submit":
-            key = self.headers.get("X-License-Key") or body.get("key")
+            key = self.get_header("X-License-Key") or body.get("key")
             valid, msg = server.verify_death_key(key, client_ip)
             if not valid:
                 return self.send_json({"status": "error", "message": msg}, status=401)
@@ -378,7 +462,7 @@ class handler(BaseHTTPRequestHandler):
             return self.send_json({"status": "error", "message": "Tài khoản hoặc mật khẩu không chính xác!"}, status=401)
 
         if path == "/api/admin/gen-key":
-            token = self.headers.get("X-Admin-Token")
+            token = self.get_header("X-Admin-Token")
             if token not in server.active_admin_sessions:
                 return self.send_json({"status": "error", "message": "Unauthorized"}, status=401)
             days = int(body.get("days", 30))
@@ -416,7 +500,7 @@ async def app(scope, receive, send):
         if scope.get("query_string"):
             h.path += "?" + scope["query_string"].decode("latin1")
         h.command = scope.get("method", "GET")
-        h.headers = dict((k.decode("latin1"), v.decode("latin1")) for k, v in scope.get("headers", []))
+        h.headers = dict((k.decode("latin1").lower(), v.decode("latin1")) for k, v in scope.get("headers", []))
         h.wfile = wfile
 
         status_container = [200]
