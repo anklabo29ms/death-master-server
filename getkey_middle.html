@@ -383,8 +383,16 @@
       const verifyApiUrl = `/api/getkey/verify?token=${encodeURIComponent(token)}&pow_nonce=${powNonce}`;
 
       fetch(verifyApiUrl)
-        .then(r => r.json())
-        .then(data => {
+        .then(async r => {
+          let data;
+          try {
+            data = await r.json();
+          } catch (e) {
+            alert(`Lỗi phản hồi từ máy chủ (HTTP ${r.status})! Vui lòng thử lại sau vài giây.`);
+            btn.disabled = false;
+            btn.innerHTML = "<span>🚀 XÁC MINH & NHẬN KEY FREE 24H ➔</span>";
+            return;
+          }
           if (data.status === "ok") {
             // HỢP LỆ -> CHUYỂN TIẾP THẲNG SANG [LINK 4] (Death-End-GetKey)
             const passUrl = `/getkey/end?key=${encodeURIComponent(data.key)}&elapsed=${data.elapsed || 0}${data.is_existing ? '&existing=1' : ''}`;
@@ -394,12 +402,15 @@
             document.getElementById("mainContainer").classList.add("card-blocked");
             document.getElementById("countdownBox").style.display = "none";
             document.getElementById("blockedElapsed").innerText = `${data.elapsed || 0}s`;
-            document.getElementById("blockedRequired").innerText = `${data.min_duration || 300}s (5 phút)`;
+            document.getElementById("blockedRequired").innerText = `${data.min_duration || 90}s`;
             if (data.strikes) {
               document.getElementById("strikeNotice").innerText = `🚨 Cảnh cáo vi phạm bypass: Lần ${data.strikes}/3. (Nếu tiếp tục vi phạm 3 lần sẽ bị khóa IP 30 phút!)`;
             }
             if (data.is_banned) {
               alert("CẢNH BÁO: IP của bạn đã bị khóa tạm thời 30 phút và đưa vào Blacklist vì cố tình vượt link bằng tool bypass!");
+            }
+            if (data.redirect) {
+              setTimeout(() => { window.location.href = data.redirect; }, 3000);
             }
             document.getElementById("blockedBox").style.display = "block";
           } else if (data.status === "banned") {
@@ -411,8 +422,8 @@
             btn.innerHTML = "<span>🚀 XÁC MINH & NHẬN KEY FREE 24H ➔</span>";
           }
         })
-        .catch(() => {
-          alert("Lỗi kết nối máy chủ xác minh!");
+        .catch(err => {
+          alert("Lỗi kết nối máy chủ xác minh: " + (err.message || "Không thể kết nối!"));
           btn.disabled = false;
           btn.innerHTML = "<span>🚀 XÁC MINH & NHẬN KEY FREE 24H ➔</span>";
         });

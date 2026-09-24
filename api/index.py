@@ -400,6 +400,12 @@ class handler(BaseHTTPRequestHandler):
         return path, query
 
     def do_GET(self):
+        try:
+            return self._do_GET_impl()
+        except Exception as e:
+            return self.send_json({"status": "error", "message": f"Lỗi máy chủ nội bộ: {str(e)}"}, status=500)
+
+    def _do_GET_impl(self):
         path, query = self.parse_url_parts()
         client_ip = get_req_client_ip(self.headers, self.client_address)
 
@@ -632,7 +638,7 @@ class handler(BaseHTTPRequestHandler):
                     })
 
             if not sess.get("claimed_key"):
-                new_key_data = server.generate_death_key(1, "Link Free 24h", client_ip, key_type="free_24h")
+                new_key_data = server.generate_death_key(days=1, notes="Link Free 24h", key_type="free_24h", client_ip=client_ip)
                 sess["claimed_key"] = new_key_data["key"]
                 sess["used"] = True
                 if hasattr(server.state, "getkey_success_count"):
@@ -764,6 +770,12 @@ class handler(BaseHTTPRequestHandler):
         return self.send_json({"error": f"Endpoint {path} not found"}, status=404)
 
     def do_POST(self):
+        try:
+            return self._do_POST_impl()
+        except Exception as e:
+            return self.send_json({"status": "error", "message": f"Lỗi máy chủ nội bộ: {str(e)}"}, status=500)
+
+    def _do_POST_impl(self):
         path, query = self.parse_url_parts()
         client_ip = get_req_client_ip(self.headers, self.client_address)
         body = self.read_json_body()

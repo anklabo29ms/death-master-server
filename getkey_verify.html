@@ -389,8 +389,16 @@
       const verifyApiUrl = `/api/getkey/verify?token=${encodeURIComponent(token)}&pow_nonce=${powNonce}${testBypass ? '&test_bypass=1' : ''}`;
 
       fetch(verifyApiUrl)
-        .then(r => r.json())
-        .then(data => {
+        .then(async r => {
+          let data;
+          try {
+            data = await r.json();
+          } catch (e) {
+            document.getElementById("loadingBox").style.display = "none";
+            alert(`Lỗi phản hồi từ máy chủ (HTTP ${r.status})! Vui lòng thử lại sau vài giây.`);
+            window.location.href = "/getkey";
+            return;
+          }
           document.getElementById("loadingBox").style.display = "none";
           if (data.status === "ok") {
             generatedKey = data.key;
@@ -418,7 +426,6 @@
             }
             document.getElementById("blockedBox").style.display = "block";
           } else if (data.status === "banned") {
-            document.getElementById("loadingBox").style.display = "none";
             alert(data.message || "IP của bạn đang bị khóa tạm thời 30 phút!");
             window.location.href = "/getkey";
           } else {
@@ -428,7 +435,7 @@
         })
         .catch(err => {
           document.getElementById("loadingBox").style.display = "none";
-          alert("Lỗi kết nối máy chủ xác minh!");
+          alert("Lỗi kết nối máy chủ xác minh: " + (err.message || "Không thể kết nối!"));
           window.location.href = "/getkey";
         });
     });
