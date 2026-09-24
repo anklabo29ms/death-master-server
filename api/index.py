@@ -347,6 +347,16 @@ class handler(BaseHTTPRequestHandler):
                     if k == "admin_token":
                         token = v
                         break
+        if not token:
+            parsed = urllib.parse.urlparse(self.path)
+            query = urllib.parse.parse_qs(parsed.query)
+            orig = query.get("__orig_path", [""])[0]
+            if orig:
+                orig_parsed = urllib.parse.urlparse(orig)
+                orig_query = urllib.parse.parse_qs(orig_parsed.query)
+                token = orig_query.get("token", [""])[0]
+            if not token:
+                token = query.get("token", [""])[0]
         return verify_admin_token(token)
 
     def parse_url_parts(self):
