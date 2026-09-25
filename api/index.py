@@ -6,6 +6,7 @@ import time
 import base64
 import random
 import urllib.parse
+import urllib.request
 from http.server import BaseHTTPRequestHandler
 
 # Thêm thư mục server vào sys.path để import toàn bộ module server.py
@@ -88,7 +89,18 @@ def get_req_client_ip(headers, client_address=None):
         return client_address[0]
     return "127.0.0.1"
 
-MASTER_SECRET_SALT = os.environ.get("MASTER_SECRET_SALT") or "DeathSuperSecretHMACSalt998877"
+MASTER_SECRET_SALT = (
+    os.environ.get("MASTER_SECRET_SALT")
+    or getattr(server, "keys_db", {}).get("secret_salt")
+    or "DeathSuperSecretHMACSalt998877"
+)
+
+def _resolve_test_bypass(raw_flag, client_ip):
+    """Ủy quyền cho server.resolve_test_bypass; nếu server.py cũ thiếu hàm này thì luôn từ chối."""
+    resolver = getattr(server, "resolve_test_bypass", None)
+    if resolver is None:
+        return False
+    return resolver(raw_flag, client_ip)
 
 def get_admin_secret():
     return MASTER_SECRET_SALT
@@ -110,11 +122,6 @@ def verify_admin_token(token):
 
     # 1. In-memory Set (cho local dev & cùng session)
     if hasattr(server, "active_admin_sessions") and token in server.active_admin_sessions:
-        return True
-
-    # 2. Direct Admin Pass Bypass (cho tiện lợi & test bảo mật)
-    admin_cfg = server.keys_db.get("admin", {})
-    if token in ("DeathAdmin@2026", "admin123", admin_cfg.get("password_hash", "")):
         return True
 
     # 3. Stateless HMAC-SHA256 Token (hoạt động độc lập trên mọi Lambda/Serverless container)
@@ -680,7 +687,7 @@ class handler(BaseHTTPRequestHandler):
             elapsed = int(time.time() - sess["created_at"])
             wait_time = int(sess.get("required_wait", 90))
             remaining = max(0, wait_time - elapsed)
-            test_bypass = query.get("test_bypass", ["0"])[0] == "1"
+            test_bypass = _resolve_test_bypass(query.get("test_bypass", ["0"])[0], client_ip)
             is_wl = server.is_ip_whitelisted(client_ip) if hasattr(server, "is_ip_whitelisted") else False
             is_disc_ok = bool(sess.get("discord_verified", False)) or test_bypass
             return self.send_json({
@@ -705,7 +712,7 @@ class handler(BaseHTTPRequestHandler):
             
             elapsed = int(time.time() - sess["created_at"])
             wait_time = int(sess.get("required_wait", 90))
-            test_bypass = query.get("test_bypass", ["0"])[0] == "1"
+            test_bypass = _resolve_test_bypass(query.get("test_bypass", ["0"])[0], client_ip)
             is_wl = server.is_ip_whitelisted(client_ip) if hasattr(server, "is_ip_whitelisted") else False
             
             if not sess.get("discord_verified", False) and not test_bypass:
@@ -1043,13 +1050,14 @@ class handler(BaseHTTPRequestHandler):
             username = body.get("username", "").strip() or "admin"
             password = body.get("password", "").strip()
             admin_cfg = server.keys_db.get("admin", {})
-            salt = admin_cfg.get("salt", "DeathSecretSalt2026")
-            expected_hash = admin_cfg.get("password_hash", "")
+            salt = os.environ.get("ADMIN_SALT") or admin_cfg.get("salt", "DeathSecretSalt2026")
+            expected_hash = os.environ.get("ADMIN_PASSWORD_HASH") or admin_cfg.get("password_hash", "")
             calc_hash = server.hashlib.sha256(f"{password}{salt}".encode()).hexdigest()
 
-            is_valid_pwd = (calc_hash == expected_hash) or (password in ("DeathAdmin@2026", "admin123", "admin"))
-            expected_user = admin_cfg.get("username", "admin")
-            if (username == expected_user or username == "admin") and is_valid_pwd:
+            # Chỉ nhận mật khẩu khớp hash cấu hình (đã xoá toàn bộ mật khẩu mặc định hard-code)
+            is_valid_pwd = bool(expected_hash) and server.hmac.compare_digest(calc_hash, expected_hash)
+            expected_user = os.environ.get("ADMIN_USERNAME") or admin_cfg.get("username", "admin")
+            if username == expected_user and is_valid_pwd:
                 token = generate_stateless_admin_token()
                 cookie_str = f"admin_token={token}; Path=/; Max-Age=604800; HttpOnly; SameSite=Lax"
                 return self.send_json(

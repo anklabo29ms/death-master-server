@@ -17,6 +17,14 @@ live_*.txt
 residential_proxies.txt
 bad_or_dead.txt
 
+# Secrets & local artifacts (TUYỆT ĐỐI không commit)
+keys.json
+batch*.json
+server_state.json
+deathkey
+deathkey.txt
+target.txt
+
 # OS
 .DS_Store
 Thumbs.db

@@ -8,6 +8,7 @@ import asyncio
 import aiohttp
 from aiohttp import web
 import ipaddress
+import random
 import re
 import time
 import hmac
@@ -99,11 +100,11 @@ def load_keys_data():
     if not os.path.exists(KEYS_FILE):
         default_data = {
             "admin": {
-                "username": "admin",
-                "password_hash": "bf60e45c5410ebb56506602e87aee2f8827ae00f58c9ceb76254cf52d5ed7168", # DeathAdmin@2026
-                "salt": "DeathSecretSalt2026"
+                "username": os.environ.get("ADMIN_USERNAME", "admin"),
+                "password_hash": os.environ.get("ADMIN_PASSWORD_HASH") or "bf60e45c5410ebb56506602e87aee2f8827ae00f58c9ceb76254cf52d5ed7168",
+                "salt": os.environ.get("ADMIN_SALT", "DeathSecretSalt2026")
             },
-            "secret_salt": "DeathSuperSecretHMACSalt998877",
+            "secret_salt": os.environ.get("MASTER_SECRET_SALT") or "DeathSuperSecretHMACSalt998877",
             "keys": {}
         }
         with open(KEYS_FILE, "w", encoding="utf-8") as f:
@@ -122,8 +123,13 @@ def save_keys_data(data):
     except Exception:
         pass
 
-MASTER_SECRET_SALT = os.environ.get("MASTER_SECRET_SALT") or "DeathSuperSecretHMACSalt998877"
 keys_db = load_keys_data()
+# Thứ tự ưu tiên: biến môi trường > secret_salt trong keys.json > giá trị mặc định (tương thích ngược)
+MASTER_SECRET_SALT = (
+    os.environ.get("MASTER_SECRET_SALT")
+    or keys_db.get("secret_salt")
+    or "DeathSuperSecretHMACSalt998877"
+)
 SECRET_SALT = MASTER_SECRET_SALT
 
 def get_server_settings() -> dict:
@@ -389,6 +395,25 @@ def is_ip_whitelisted(ip: str) -> bool:
     """Kiểm tra IP có thuộc Whitelist (được miễn trừ giới hạn 5 phút & Anti-Bypass)."""
     clean_ip = (ip or "").strip()
     return clean_ip in keys_db.get("whitelist", [])
+
+def is_local_ip(ip: str) -> bool:
+    """True nếu IP thuộc máy cục bộ / mạng nội bộ (loopback hoặc dải RFC 1918)."""
+    clean_ip = (ip or "").strip()
+    if not clean_ip:
+        return False
+    try:
+        addr = ipaddress.ip_address(clean_ip)
+    except ValueError:
+        return False
+    return addr.is_loopback or addr.is_private
+
+def resolve_test_bypass(raw_flag, client_ip: str) -> bool:
+    """Cờ test_bypass CHỈ có hiệu lực khi request đến từ máy cục bộ / mạng nội bộ.
+
+    Trước đây cờ này được chấp nhận từ MỌI IP, cho phép bỏ qua bước xác thực Discord
+    ngay trên bản deploy công khai. Tuyệt đối không mở lại điều kiện này.
+    """
+    return str(raw_flag) == "1" and is_local_ip(client_ip)
 
 def is_ip_bypass_banned(ip: str) -> tuple[bool, int]:
     """Kiểm tra IP có đang bị tạm khóa do gian lận bypass không (hoặc do admin ban)."""
@@ -1182,9 +1207,6 @@ def verify_admin_token(token: str) -> bool:
     token = token.strip()
     if token in active_admin_sessions:
         return True
-    admin_cfg = keys_db.get("admin", {})
-    if token in ("DeathAdmin@2026", "admin123", admin_cfg.get("password_hash", "")):
-        return True
     if token.startswith("dadmin_"):
         parts = token.split("_")
         if len(parts) == 3:
@@ -1317,8 +1339,10 @@ async def api_submit_handler(request):
         return web.json_response({"status": "error", "message": "Invalid JSON"}, status=400)
 
     live_proxies = body.get("live_proxies", [])
+    delta_checked = int(body.get("delta_checked", body.get("checked_count", 0)))
     client_total_checked = int(body.get("total_checked", 0))
     client_total_live = int(body.get("total_live", 0))
+    worker_speed = int(body.get("speed", 0))
 
     if client_total_checked > 0:
         state.checked_total = max(state.checked_total, client_total_checked)
@@ -1470,12 +1494,14 @@ async def api_admin_login(request):
     password = body.get("password", "").strip()
 
     admin_cfg = keys_db.get("admin", {})
-    salt = admin_cfg.get("salt", "DeathSecretSalt2026")
+    salt = os.environ.get("ADMIN_SALT") or admin_cfg.get("salt", "DeathSecretSalt2026")
+    expected_hash = os.environ.get("ADMIN_PASSWORD_HASH") or admin_cfg.get("password_hash", "")
     calc_hash = hashlib.sha256((password + salt).encode()).hexdigest()
 
-    is_valid_pwd = (calc_hash == admin_cfg.get("password_hash")) or (password in ("DeathAdmin@2026", "admin123", "admin"))
-    expected_user = admin_cfg.get("username", "admin")
-    if (username == expected_user or username == "admin") and is_valid_pwd:
+    # Chỉ chấp nhận mật khẩu khớp hash đã cấu hình (đã xoá toàn bộ mật khẩu hard-code)
+    is_valid_pwd = bool(expected_hash) and hmac.compare_digest(calc_hash, expected_hash)
+    expected_user = os.environ.get("ADMIN_USERNAME") or admin_cfg.get("username", "admin")
+    if username == expected_user and is_valid_pwd:
         clear_failed_attempts(client_ip)
         token = generate_stateless_admin_token()
         resp = web.json_response({"status": "ok", "token": token, "message": "Đăng nhập Admin thành công!"})
@@ -1905,7 +1931,7 @@ async def api_shortener_discord_status(request):
     """Kiểm tra trạng thái tiến trình đối soát thành viên Discord."""
     token = request.query.get("token", "").strip()
     client_ip = get_client_ip(request)
-    test_bypass = request.query.get("test_bypass") == "1"
+    test_bypass = resolve_test_bypass(request.query.get("test_bypass"), client_ip)
     sess = verify_and_decode_getkey_token(token)
     if not sess:
         return web.json_response({"status": "error", "message": "Phiên không hợp lệ hoặc đã hết hạn!"}, status=404)
@@ -1971,7 +1997,7 @@ async def api_getkey_middle_status(request):
     """Cung cấp đồng hồ đo tiến trình tổng thể cho Link 3: Death-Middle-GetKey."""
     token = request.query.get("token", "").strip()
     client_ip = get_client_ip(request)
-    test_bypass = request.query.get("test_bypass") == "1"
+    test_bypass = resolve_test_bypass(request.query.get("test_bypass"), client_ip)
     sess = verify_and_decode_getkey_token(token)
     if not sess:
         return web.json_response({"status": "error", "message": "Phiên không hợp lệ hoặc đã hết hạn!"}, status=404)
@@ -2109,7 +2135,7 @@ async def api_getkey_verify(request):
         }, status=403)
 
     token = request.query.get("token", "").strip()
-    test_bypass = request.query.get("test_bypass") == "1"
+    test_bypass = resolve_test_bypass(request.query.get("test_bypass"), client_ip)
     pow_nonce = request.query.get("pow_nonce", "").strip()
 
     # Hỗ trợ nhận diện phiên theo IP nếu khách hàng đến từ link rút gọn tĩnh của Link4M
@@ -2187,12 +2213,10 @@ async def api_getkey_verify(request):
     total_min = int(settings.get("total_min_key_duration", 300))
 
     # 5. KIỂM TRA THỜI GIAN ANTI-BYPASS (Đốt tối thiểu 5 phút = 300 giây)
-    if test_bypass or ((elapsed < total_min) and not is_ip_whitelisted(client_ip)):
-        if test_bypass:
-            strikes, is_b = 1, False
-        else:
-            strikes, is_b = record_bypass_strike(client_ip, f"Vượt link quá nhanh ({int(elapsed)}s < {total_min}s)")
-            state.bypass_blocked_count += 1
+    # test_bypass chỉ có hiệu lực tại máy cục bộ (xem resolve_test_bypass) => dùng để test nhanh vòng 4 link.
+    if (not test_bypass) and (elapsed < total_min) and not is_ip_whitelisted(client_ip):
+        strikes, is_b = record_bypass_strike(client_ip, f"Vượt link quá nhanh ({int(elapsed)}s < {total_min}s)")
+        state.bypass_blocked_count += 1
         ban_msg = " Bạn đã bị tạm khóa IP 30 phút và đưa vào Blacklist!" if is_b else f" Cảnh cáo lần {strikes}/3 (Nếu vi phạm 3 lần sẽ bị khóa IP 30 phút)."
         return web.json_response({
             "status": "blocked",
@@ -2392,6 +2416,7 @@ async def main():
 
     # APIs Get Key & Discord Verification
     app.router.add_get("/api/getkey/captcha", api_getkey_captcha)
+    app.router.add_get("/getkey/captcha", api_getkey_captcha)  # Alias cho Dashboard Test Bench
     app.router.add_post("/api/getkey/start", api_getkey_start)
     app.router.add_post("/api/shortener/discord-start", api_shortener_discord_start)
     app.router.add_get("/api/shortener/discord-status", api_shortener_discord_status)
@@ -2452,9 +2477,9 @@ async def main():
     print(f"📡 API PHÂN PHỐI              : {web_url_local}/api/tasks")
     print(f"🎯 PING TARGET            : {state.ping_target}")
     print(f"🛡️ BẢO MẬT NGUỒN    : Đã khóa kín {len(urls):,} Nguồn VIP trên Master Server (Zero-Leak)")
-    print(f"🔑 TÀI KHOẢN ADMIN  : admin | Mật khẩu: DeathAdmin@2026")
+    print(f"🔑 TÀI KHOẢN ADMIN  : {os.environ.get('ADMIN_USERNAME', 'admin')} | Mật khẩu: KHÔNG in ra (đặt qua ADMIN_PASSWORD_HASH hoặc keys.json)")
     print(f"🤫 NÚT BÍ MẬT ADMIN : Click 5 lần vào Logo ⚡ hoặc bấm [Ctrl + Shift + A]")
-    print(f"🔑 KEY MẪU ĐỂ TEST  : {sample_key['key']} (Hạn: {sample_key['expires_at']})")
+    print(f"🔑 KEY MẪU ĐỂ TEST  : {sample_key['key'][:14]}…{sample_key['key'][-8:]} (Hạn: {sample_key['expires_at']})")
     print(f"💬 LIÊN HỆ HỖ TRỢ   : Discord: {TOOL_DISCORD} | https://discord.gg/2zuwDpJaNP")
     print("-------------------------------------------------------------------------------------")
     print("⚡ Master Server đang chạy ngầm 24/7. Nhấn Ctrl+C để dừng.")

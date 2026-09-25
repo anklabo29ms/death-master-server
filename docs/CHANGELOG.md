@@ -4,6 +4,34 @@ Tất cả các thay đổi, sửa đổi kiến trúc và cập nhật tính n�
 
 ---
 
+## 🛠️ [V1.0.1] — 2026-09-25 (BẢN VÁ LỖI P0: BẢO MẬT & ỔN ĐỊNH)
+
+### 🐛 Sửa lỗi nghiêm trọng:
+- **`/api/submit` trả HTTP 500 ở bản `server.py`**: handler dùng `delta_checked` và `worker_speed` nhưng hai biến này chưa từng được gán → mọi heartbeat/nộp kết quả đều ném `NameError`. Đã bổ sung đọc hai trường này từ request body (đồng bộ hành vi với `api/index.py`).
+- **Thiếu `import random` trong `server.py`**: `random.shuffle()` trong `api_tasks_handler` ném `NameError` bị nuốt bởi `except Exception` → kho seed không bao giờ được nạp ở bản VPS/standalone. Đã bổ sung import.
+- **Cờ `test_bypass` bị lạm dụng từ xa**: trước đây `?test_bypass=1` được chấp nhận từ **mọi IP**, cho phép bỏ qua bước xác thực Discord. Nay chỉ có hiệu lực với request đến từ máy cục bộ / mạng nội bộ qua hàm `resolve_test_bypass()` (có test tự động chặn hồi quy).
+- **Lỗ hổng bypass Admin**: đã xoá toàn bộ mật khẩu hard-code (`DeathAdmin@2026`, `admin123`, `admin`) và xoá nhánh cho phép dùng `password_hash` làm token. Mật khẩu admin nay chỉ khớp hash cấu hình, hỗ trợ ghi đè bằng biến môi trường `ADMIN_USERNAME` / `ADMIN_PASSWORD_HASH` / `ADMIN_SALT`.
+- **Rò rỉ thông tin ra console**: màn hình khởi động không còn in mật khẩu admin và không in trọn key mẫu (đã che).
+- **Thiếu import `urllib.request`** trong `api/index.py`: trước đây chỉ chạy được nhờ import gián tiếp từ thư viện khác.
+- **Client không lọc dải IP nội bộ**: `is_valid_public_ip()` được định nghĩa nhưng chưa từng gọi. Nay `probe_proxy()` bỏ qua mọi IP loopback / RFC 1918 đúng như cam kết trong `TERMS_OF_SERVICE.md`.
+- **Nút Test Bench trên Dashboard luôn báo lỗi**: hàm `runSimValidGetKey()` và `runSimFastBypass()` gọi `/getkey/verify-captcha` (endpoint KHÔNG tồn tại) và `/getkey/verify` (trả về HTML trang, không phải JSON). Đã chuyển sang `/api/getkey/start` và `/api/getkey/verify`; bổ sung alias `/getkey/captcha` cho `server.py`.
+
+### 🔑 Có thể cấu hình qua biến môi trường (tương thích ngược):
+- `MASTER_SECRET_SALT` → nay đọc theo thứ tự: biến môi trường → `secret_salt` trong `keys.json` → giá trị mặc định cũ.
+- `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH`, `ADMIN_SALT` cho tài khoản quản trị.
+
+### ⚠️ Việc BẮT BUỘC phải làm thủ công (không thể tự động hoá):
+1. **Đổi `MASTER_SECRET_SALT`** (đặt biến môi trường trên Vercel/Pterodactyl) — giá trị cũ đã nằm trong git.
+2. **Đổi mật khẩu admin** và **thu hồi toàn bộ key `Death-*`** đã phát hành.
+3. **Gỡ `keys.json` khỏi git và xoá khỏi lịch sử** (`git filter-repo`) — hiện file này vẫn được track ở cả 2 repo.
+
+### ✅ Kiểm thử (8 tiêu chí):
+- Bổ sung test 6 quét biến chưa định nghĩa bằng `symtable` (chống tái phát lỗi P0 đã sửa).
+- Bổ sung test 7 chứng minh `test_bypass` bị chặn từ IP công khai và vẫn hoạt động ở localhost.
+- Bổ sung test 8 gọi thật `api_submit_handler` bằng request giả lập theo kiểu hermetic (chuyển `KEYS_FILE`/`STATE_FILE` sang thư mục tạm) để chốt rằng `/api/submit` trả HTTP 200 và cập nhật state.
+
+---
+
 ## 🚀 [V1.0.0] — 2026-09-24 & 2026-09-25 (BẢN PHÁT HÀNH TOÀN DIỆN HIỆN TẠI)
 
 ### 💎 Các Tính Năng Nổi Bật Mới Thêm:

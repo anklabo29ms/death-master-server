@@ -2883,7 +2883,7 @@
         const capData = await capResp.json();
         const cid = capData.cid;
 
-        const solveResp = await fetch("/getkey/verify-captcha", {
+        const solveResp = await fetch("/api/getkey/start", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ cid: cid, answer: capData.ans !== undefined ? capData.ans : eval(capData.expr || "1+1") })
@@ -2904,7 +2904,7 @@
             clearInterval(simBenchInterval);
             statusText.innerText = "Đã đủ thời gian! Đang gửi xác thực tới /getkey/verify...";
 
-            const vResp = await fetch(`/getkey/verify?token=${encodeURIComponent(sessionToken)}`);
+            const vResp = await fetch(`/api/getkey/verify?token=${encodeURIComponent(sessionToken)}`);
             const vData = await vResp.json();
 
             progBox.style.display = "none";
@@ -2943,7 +2943,7 @@
         const capData = await capResp.json();
         const cid = capData.cid;
 
-        const solveResp = await fetch("/getkey/verify-captcha", {
+        const solveResp = await fetch("/api/getkey/start", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ cid: cid, answer: capData.ans !== undefined ? capData.ans : eval(capData.expr || "1+1") })
@@ -2951,7 +2951,7 @@
         const solveData = await solveResp.json();
         const sessionToken = solveData.token;
 
-        const vResp = await fetch(`/getkey/verify?token=${encodeURIComponent(sessionToken)}&test_bypass=1`);
+        const vResp = await fetch(`/api/getkey/verify?token=${encodeURIComponent(sessionToken)}&test_bypass=1`);
         const vData = await vResp.json();
 
         btn.disabled = false;
