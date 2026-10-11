@@ -1347,3 +1347,4 @@ https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks4&timeout=8
 https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=8000&country=CN&ssl=all&anonymity=all
 https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks5&timeout=8000&country=CN
 https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks4&timeout=8000&country=CN
+https://rcloak.com/api/proxies/raw?protocol=all
